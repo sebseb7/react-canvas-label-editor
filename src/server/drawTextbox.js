@@ -1,9 +1,9 @@
 import { drawTextbox } from '../utils/drawTextbox.js'
-import { isTtfTextboxFont, TEXTBOX_FONT_WEIGHTS } from '../utils/textboxFonts.js'
+import { isTtfTextboxFont, resolveTextboxFont, TEXTBOX_FONT_WEIGHTS } from '../utils/textboxFonts.js'
 import { registerServerFonts, serverFontFamily } from './loadServerFonts.js'
 
 export function drawServerTextbox(ctx, obj) {
-  const font = obj.font ?? 'raster7x9'
+  const font = resolveTextboxFont(obj.font)
   const options = { fillStyle: '#000000' }
 
   if (isTtfTextboxFont(font)) {

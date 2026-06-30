@@ -1,7 +1,6 @@
 export { default as CanvasEditor } from './components/CanvasEditor/index.js'
 export * from './components/CanvasEditor/constants.js'
 import './components/CanvasEditor/CanvasEditor.css'
-import './fonts/editorFonts.css'
 
 /** @returns {never} */
 export function renderLabel() {

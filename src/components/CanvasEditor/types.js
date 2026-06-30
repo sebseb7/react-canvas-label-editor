@@ -1,4 +1,4 @@
-/** @typedef {'textbox' | 'barcode' | 'png'} EditorObjectType */
+import { DEFAULT_TEXTBOX_FONT } from '../../utils/textboxFonts'
 
 /**
  * @typedef {object} TextboxObject
@@ -53,7 +53,7 @@ export function createTextbox(overrides = {}) {
     id: crypto.randomUUID(),
     type: 'textbox',
     text: 'Beispieltext',
-    font: 'raster7x9',
+    font: DEFAULT_TEXTBOX_FONT,
     blackpoint: 128,
     minFontSize: 14,
     maxFontSize: 36,

@@ -7,7 +7,7 @@ import {
   normalizeBarcodeCode,
   resolveBarcodeFormat,
 } from '../utils/barcode.js'
-import { isRasterTextboxFont } from '../utils/textboxFonts.js'
+import { isRasterTextboxFont, resolveTextboxFont } from '../utils/textboxFonts.js'
 import { drawServerTextbox } from './drawTextbox.js'
 import { loadSourceImage } from './loadSourceImage.js'
 import { registerServerFonts, SERVER_FONT_FAMILIES } from './loadServerFonts.js'
@@ -72,7 +72,7 @@ export async function renderLabel({ height, objects }) {
   for (const obj of objects) {
     switch (obj.type) {
       case 'textbox':
-        if (isRasterTextboxFont(obj.font ?? 'raster7x9')) {
+        if (isRasterTextboxFont(resolveTextboxFont(obj.font))) {
           rasterTextboxes.push(obj)
         } else {
           drawServerTextbox(hiCtx, obj)

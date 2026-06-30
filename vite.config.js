@@ -11,6 +11,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    assetsInlineLimit: 0,
     lib: {
       entry: path.resolve(root, 'src/entry-client.js'),
       formats: ['es'],

@@ -3,7 +3,7 @@
 React class component for editing a template for a 1-bit canvas-rendered label, plus a Node.js rasterizer that produces the final PNG.
 
 ```
-npm i github:sebseb7/react-canvas-label-editor#v1
+npm i github:sebseb7/react-canvas-label-editor#v3
 ```
 
 ## Usage
@@ -21,7 +21,7 @@ class App extends Component {
         id: '1',
         type: 'textbox',
         text: 'Hello',
-        font: 'raster7x9',
+        font: 'outfit',
         x: 24,
         y: 24,
         w: 200,

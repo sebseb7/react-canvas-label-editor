@@ -1,4 +1,4 @@
-import { cp, mkdir, writeFile } from 'fs/promises'
+import { cp, mkdir, readFile, writeFile } from 'fs/promises'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import { build } from 'vite'
@@ -23,6 +23,14 @@ await cp(path.resolve(root, 'src/fonts'), path.resolve(root, 'dist/fonts'), {
   recursive: true,
   filter: (src) => !src.endsWith('.css') && !src.endsWith('.js'),
 })
+
+const clientCssPath = path.resolve(root, 'dist/client.css')
+const fontsCss = await readFile(
+  path.resolve(root, 'src/fonts/editorFonts.dist.css'),
+  'utf8',
+)
+const clientCss = (await readFile(clientCssPath, 'utf8')).replace(/\/\*\$vite\$:\d+\*\/\s*$/, '')
+await writeFile(clientCssPath, `${clientCss}\n${fontsCss}`)
 
 await writeFile(path.resolve(root, 'dist/node.js'), nodeEntry)
 await writeFile(path.resolve(root, 'dist/index.js'), nodeEntry)

@@ -1,10 +1,12 @@
 /** @typedef {'raster7x9' | 'outfit' | 'barlow-semi-condensed'} TextboxFont */
 
 export const TEXTBOX_FONTS = /** @type {const} */ ([
-  'raster7x9',
   'outfit',
   'barlow-semi-condensed',
+  'raster7x9',
 ])
+
+export const DEFAULT_TEXTBOX_FONT = 'outfit'
 
 export const TEXTBOX_FONT_LABELS = {
   raster7x9: '7×9 Raster',
@@ -38,7 +40,7 @@ export function isTtfTextboxFont(font) {
 export function resolveTextboxFont(font) {
   if (font === 'raster9x8') return 'raster7x9'
   if (TEXTBOX_FONTS.includes(font)) return font
-  return 'outfit'
+  return DEFAULT_TEXTBOX_FONT
 }
 
 let fontsReady = null

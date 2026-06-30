@@ -1,6 +1,7 @@
 import { imageSrcForStore, imageSrcSummary } from '../../utils/imageSrc'
 import { BARCODE_INVALID_MESSAGE, getBarcodeValidationError } from '../../utils/barcode'
 import {
+  DEFAULT_TEXTBOX_FONT,
   isTtfTextboxFont,
   TEXTBOX_FONT_LABELS,
   TEXTBOX_FONTS,
@@ -30,7 +31,7 @@ const PLACEHOLDER = {
   textbox: {
     type: 'textbox',
     text: 'Beispieltext',
-    font: 'raster7x9',
+    font: DEFAULT_TEXTBOX_FONT,
     blackpoint: 128,
     minFontSize: 14,
     maxFontSize: 36,
@@ -85,7 +86,7 @@ function FieldRow({ children, className }) {
 
 function TextboxFields({ obj, onChange }) {
   const set = (field, value) => onChange(field, value)
-  const font = obj.font ?? 'raster7x9'
+  const font = obj.font ?? DEFAULT_TEXTBOX_FONT
   const fontSizeEnabled = isTtfTextboxFont(font)
   const invert = Boolean(obj.invert)
 
