@@ -1,0 +1,15 @@
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./Outfit-Medium.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Barlow Semi Condensed';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./BarlowSemiCondensed-Medium.ttf') format('truetype');
+}

@@ -1,0 +1,249 @@
+.canvas-editor {
+  display: inline-flex;
+  flex-direction: column;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  background: #f8fafc;
+  text-align: left;
+}
+
+.canvas-editor__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.canvas-editor__height {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.canvas-editor__height input[type='range'] {
+  width: 120px;
+}
+
+.canvas-editor__body {
+  display: flex;
+  align-items: flex-start;
+}
+
+.canvas-editor-panel {
+  position: relative;
+  width: 360px;
+  min-width: 0;
+  flex-shrink: 0;
+  padding: 0.75rem;
+  background: #f8fafc;
+  font-size: 0.875rem;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.canvas-editor-panel__fields-stack {
+  display: grid;
+  min-width: 0;
+  width: 100%;
+}
+
+.canvas-editor-panel__fields-layer {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  width: 100%;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.canvas-editor-panel__fields-layer--active {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.canvas-editor-panel__header-spacer {
+  display: inline-block;
+  width: 3.5rem;
+  height: 1.75rem;
+}
+
+.canvas-editor-panel__hint {
+  position: absolute;
+  inset: 2.5rem 0.75rem 0.75rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #64748b;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.canvas-editor__stage {
+  flex-shrink: 0;
+  line-height: 0;
+  border-right: 1px solid #e2e8f0;
+  background: #e2e8f0;
+}
+
+.canvas-editor__canvas {
+  display: block;
+  background: #fff;
+  cursor: default;
+}
+
+.canvas-editor-btn {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.875rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.canvas-editor-btn:hover {
+  background: #f1f5f9;
+}
+
+.canvas-editor-btn--danger {
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.canvas-editor-btn--danger:hover {
+  background: #fef2f2;
+}
+
+.canvas-editor-panel__image-info {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #64748b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.canvas-editor-panel__field-error {
+  margin: -0.25rem 0 0;
+  font-size: 0.75rem;
+  color: #b91c1c;
+}
+
+.canvas-editor-field input[type='range'] {
+  width: 100%;
+  padding: 0;
+  border: none;
+}
+
+.canvas-editor-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.canvas-editor-panel__header h3 {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  color: #0f172a;
+}
+
+.canvas-editor-panel__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.canvas-editor-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.canvas-editor-field-row--quad {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.canvas-editor-field-row--disabled .canvas-editor-field span {
+  color: #94a3b8;
+}
+
+.canvas-editor-field-row--disabled input:disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+  border-color: #e2e8f0;
+  cursor: not-allowed;
+}
+
+.canvas-editor-field--disabled span {
+  color: #94a3b8;
+}
+
+.canvas-editor-field--disabled input:disabled {
+  background: #f1f5f9;
+  color: #94a3b8;
+  border-color: #e2e8f0;
+  cursor: not-allowed;
+}
+
+.canvas-editor-field--checkbox {
+  justify-content: flex-start;
+}
+
+.canvas-editor-field--checkbox input[type='checkbox'] {
+  width: auto;
+  margin: 0;
+  align-self: flex-start;
+}
+
+.canvas-editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+  width: 100%;
+}
+
+.canvas-editor-field span {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.canvas-editor-field input,
+.canvas-editor-field textarea,
+.canvas-editor-field select {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.3rem 0.4rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  font-family: inherit;
+}
+
+.canvas-editor-field input[type='file'] {
+  width: 100%;
+  max-width: 100%;
+  padding: 0.2rem 0;
+  border: none;
+  font-size: 0.75rem;
+}
+

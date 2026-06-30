@@ -1,0 +1,99 @@
+.dev-app {
+  padding: 2rem;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.dev-app__header {
+  margin-bottom: 1.5rem;
+}
+
+.dev-app__header h1 {
+  margin: 0 0 0.5rem;
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.dev-app__header p {
+  margin: 0;
+  color: #64748b;
+}
+
+.dev-app__header code {
+  font-size: 0.9em;
+  background: #f1f5f9;
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+}
+
+.dev-app__json {
+  margin-top: 1.5rem;
+  text-align: left;
+}
+
+.dev-app__json summary {
+  cursor: pointer;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.dev-app__json pre {
+  margin: 0.5rem 0 0;
+  padding: 0.75rem;
+  background: #f1f5f9;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  overflow: auto;
+  max-height: 240px;
+}
+
+.dev-app__preview {
+  margin-top: 2rem;
+  text-align: left;
+}
+
+.dev-app__preview h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.dev-app__preview-note {
+  margin: 0 0 1rem;
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
+.dev-app__preview-frame {
+  position: relative;
+  width: 448px;
+  max-width: 100%;
+  height: var(--preview-height);
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  overflow: hidden;
+}
+
+.dev-app__preview-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+}
+
+.dev-app__preview-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 0.75rem;
+  margin: 0;
+  text-align: center;
+  color: #b91c1c;
+  font-size: 0.875rem;
+  background: #fef2f2;
+  box-sizing: border-box;
+}

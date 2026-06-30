@@ -1,0 +1,50 @@
+{
+  "name": "react-canvas-label-editor",
+  "version": "0.1.0",
+  "description": "React class component for editing 1-bit canvas label templates, with a Node.js rasterizer",
+  "type": "module",
+  "files": [
+    "dist",
+    "src/server",
+    "src/utils",
+    "src/render",
+    "src/components/CanvasEditor/constants.js",
+    "src/fonts"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    ".": {
+      "browser": "./dist/client.js",
+      "node": "./dist/node.js",
+      "default": "./dist/client.js"
+    },
+    "./style.css": "./dist/client.css"
+  },
+  "scripts": {
+    "dev": "vite --config vite.dev.config.js",
+    "build": "node scripts/build-lib.mjs",
+    "prepare": "npm run build",
+    "lint": "oxlint",
+    "preview": "vite preview --config vite.dev.config.js"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "dependencies": {
+    "canvas": "^3.2.3",
+    "jsbarcode": "^3.12.3",
+    "sharp": "^0.35.2"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "oxlint": "^1.72.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "vite": "^8.1.2"
+  }
+}
