@@ -3,8 +3,7 @@ import { BARCODE_INVALID_MESSAGE, getBarcodeValidationError } from '../../utils/
 import {
   DEFAULT_TEXTBOX_FONT,
   isTtfTextboxFont,
-  TEXTBOX_FONT_LABELS,
-  TEXTBOX_FONTS,
+  TEXTBOX_FONT_OPTIONS,
 } from '../../utils/textboxFonts'
 import {
   TEXTBOX_HALIGN_LABELS,
@@ -95,9 +94,9 @@ function TextboxFields({ obj, onChange }) {
       <label className="canvas-editor-field">
         <span>Schriftart</span>
         <select value={font} onChange={(e) => set('font', e.target.value)}>
-          {TEXTBOX_FONTS.map((id) => (
-            <option key={id} value={id}>
-              {TEXTBOX_FONT_LABELS[id]}
+          {TEXTBOX_FONT_OPTIONS.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
             </option>
           ))}
         </select>

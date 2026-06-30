@@ -1,18 +1,18 @@
 /** @typedef {'raster7x9' | 'outfit' | 'barlow-semi-condensed'} TextboxFont */
 
-export const TEXTBOX_FONTS = /** @type {const} */ ([
-  'outfit',
-  'barlow-semi-condensed',
-  'raster7x9',
+export const TEXTBOX_FONT_OPTIONS = /** @type {const} */ ([
+  { id: 'outfit', label: 'Outfit Medium' },
+  { id: 'barlow-semi-condensed', label: 'Barlow Semi Condensed Medium' },
+  { id: 'raster7x9', label: '7×9 Raster' },
 ])
+
+export const TEXTBOX_FONTS = TEXTBOX_FONT_OPTIONS.map((option) => option.id)
 
 export const DEFAULT_TEXTBOX_FONT = 'outfit'
 
-export const TEXTBOX_FONT_LABELS = {
-  raster7x9: '7×9 Raster',
-  outfit: 'Outfit Medium',
-  'barlow-semi-condensed': 'Barlow Semi Condensed Medium',
-}
+export const TEXTBOX_FONT_LABELS = Object.fromEntries(
+  TEXTBOX_FONT_OPTIONS.map((option) => [option.id, option.label]),
+)
 
 export const TEXTBOX_FONT_FAMILIES = {
   outfit: 'Outfit',
