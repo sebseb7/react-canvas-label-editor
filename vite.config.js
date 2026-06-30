@@ -7,7 +7,7 @@ const root = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
   publicDir: false,
-  plugins: [react()],
+  plugins: [react({ jsxRuntime: 'automatic' })],
   build: {
     outDir: 'dist',
     emptyOutDir: true,
@@ -17,7 +17,12 @@ export default defineConfig({
       fileName: 'client',
     },
     rollupOptions: {
-      external: ['react', 'react-dom', 'react/jsx-runtime'],
+      external: [
+        'react',
+        'react-dom',
+        'react/jsx-runtime',
+        'react/jsx-dev-runtime',
+      ],
     },
   },
 })
