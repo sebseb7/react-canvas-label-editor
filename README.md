@@ -3,12 +3,11 @@
 React class component for editing a template for a 1-bit canvas-rendered label, plus a Node.js rasterizer that produces the final PNG.
 
 ```
-npm i github:sebseb7/react-canvas-label-editor#v9.0.0
+npm i github:sebseb7/react-canvas-label-editor#v10.0.0
 ```
 
 ## Todo
 
-- Allow the button, textfield, and slider components to be passed in as props so consumers can supply their own (e.g. MUI) components.
 - Make all displayed text configurable via a props object.
 
 
@@ -58,7 +57,58 @@ class App extends Component {
 
 `width`, `minHeight` and `maxHeight` are all optional and default to the library's built-in label size (`CANVAS_WIDTH`, `CANVAS_HEIGHT_MIN`, `CANVAS_HEIGHT_MAX`, also exported by the package).
 
-serverside:
+### Custom button, textfield, and slider components
+
+`CanvasEditor` renders its buttons, text/number inputs, and sliders through an optional `components` prop. Any component you don't override falls back to the built-in native-HTML implementation, so you only need to supply the ones you want to replace (e.g. with MUI):
+
+```jsx
+import Button from '@mui/material/Button'
+import TextField from '@mui/material/TextField'
+import Slider from '@mui/material/Slider'
+
+const muiComponents = {
+  Button: ({ variant, disabled, onClick, children }) => (
+    <Button
+      variant={variant === 'primary' ? 'contained' : 'outlined'}
+      color={variant === 'danger' ? 'error' : 'primary'}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      {children}
+    </Button>
+  ),
+  TextField: ({ label, value, onChange, type, multiline, rows, min, max, step, disabled, placeholder }) => (
+    <TextField
+      label={label}
+      value={value}
+      type={multiline ? undefined : type}
+      multiline={multiline}
+      rows={rows}
+      disabled={disabled}
+      placeholder={placeholder}
+      inputProps={{ min, max, step }}
+      onChange={(e) => onChange(type === 'number' ? Number(e.target.value) : e.target.value)}
+    />
+  ),
+  Slider: ({ label, value, onChange, min, max, step, disabled }) => (
+    <div>
+      {label ? <span>{label}</span> : null}
+      <Slider
+        value={value}
+        min={min}
+        max={max}
+        step={step}
+        disabled={disabled}
+        onChange={(_, newValue) => onChange(newValue)}
+      />
+    </div>
+  ),
+}
+
+// <CanvasEditor ... components={muiComponents} />
+```
+
+## Serverside:
 
 ```js
 import { renderLabel } from 'react-canvas-label-editor'

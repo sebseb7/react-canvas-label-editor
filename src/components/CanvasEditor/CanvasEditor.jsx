@@ -21,6 +21,7 @@ import {
   PNG_SCALE_MIN,
 } from './constants'
 import { createBarcode, createPng, createTextbox } from './types'
+import { DEFAULT_COMPONENTS } from './defaultComponents'
 import './CanvasEditor.css'
 
 export default class CanvasEditor extends Component {
@@ -59,6 +60,11 @@ export default class CanvasEditor extends Component {
     onHeightChange: null,
     onCopy: null,
     clipboard: null,
+    components: {},
+  }
+
+  getComponents() {
+    return { ...DEFAULT_COMPONENTS, ...this.props.components }
   }
 
   componentDidMount() {
@@ -394,29 +400,23 @@ export default class CanvasEditor extends Component {
   render() {
     const { width, minHeight, maxHeight } = this.props
     const height = this.canvasHeight()
+    const components = this.getComponents()
+    const { Button, Slider } = components
 
     return (
       <div className="canvas-editor">
         <div className="canvas-editor__toolbar">
-          <button type="button" className="canvas-editor-btn" onClick={() => this.addObject(createTextbox)}>
-            + Textfeld
-          </button>
-          <button type="button" className="canvas-editor-btn" onClick={() => this.addObject(createBarcode)}>
-            + Barcode
-          </button>
-          <button type="button" className="canvas-editor-btn" onClick={() => this.addObject(createPng)}>
-            + Image
-          </button>
-          <label className="canvas-editor__height">
-            <span>Höhe {height}</span>
-            <input
-              type="range"
-              min={minHeight}
-              max={maxHeight}
-              value={height}
-              onChange={(e) => this.setCanvasHeight(Number(e.target.value))}
-            />
-          </label>
+          <Button onClick={() => this.addObject(createTextbox)}>+ Textfeld</Button>
+          <Button onClick={() => this.addObject(createBarcode)}>+ Barcode</Button>
+          <Button onClick={() => this.addObject(createPng)}>+ Image</Button>
+          <Slider
+            className="canvas-editor__height"
+            label={`Höhe ${height}`}
+            min={minHeight}
+            max={maxHeight}
+            value={height}
+            onChange={(value) => this.setCanvasHeight(value)}
+          />
         </div>
         <div className="canvas-editor__body">
           <div className="canvas-editor__stage">
@@ -436,6 +436,7 @@ export default class CanvasEditor extends Component {
             onCopy={(obj) => this.props.onCopy?.(obj)}
             clipboard={this.props.clipboard}
             onPaste={(clipboard) => this.pasteObject(clipboard)}
+            components={components}
           />
         </div>
       </div>

@@ -84,7 +84,8 @@ function FieldRow({ children, className }) {
   )
 }
 
-function TextboxFields({ obj, onChange }) {
+function TextboxFields({ obj, onChange, components }) {
+  const { TextField } = components
   const set = (field, value) => onChange(field, value)
   const font = obj.font ?? DEFAULT_TEXTBOX_FONT
   const fontSizeEnabled = isTtfTextboxFont(font)
@@ -102,31 +103,30 @@ function TextboxFields({ obj, onChange }) {
           ))}
         </select>
       </label>
-      <label className="canvas-editor-field">
-        <span>Text</span>
-        <textarea value={obj.text} rows={3} onChange={(e) => set('text', e.target.value)} />
-      </label>
+      <TextField
+        label="Text"
+        multiline
+        rows={3}
+        value={obj.text}
+        onChange={(value) => set('text', value)}
+      />
       <FieldRow className={fontSizeEnabled ? undefined : 'canvas-editor-field-row--disabled'}>
-        <label className="canvas-editor-field">
-          <span>Min. Schriftgröße</span>
-          <input
-            type="number"
-            min={1}
-            disabled={!fontSizeEnabled}
-            value={obj.minFontSize}
-            onChange={(e) => set('minFontSize', Number(e.target.value))}
-          />
-        </label>
-        <label className="canvas-editor-field">
-          <span>Max. Schriftgröße</span>
-          <input
-            type="number"
-            min={1}
-            disabled={!fontSizeEnabled}
-            value={obj.maxFontSize}
-            onChange={(e) => set('maxFontSize', Number(e.target.value))}
-          />
-        </label>
+        <TextField
+          label="Min. Schriftgröße"
+          type="number"
+          min={1}
+          disabled={!fontSizeEnabled}
+          value={obj.minFontSize}
+          onChange={(value) => set('minFontSize', value)}
+        />
+        <TextField
+          label="Max. Schriftgröße"
+          type="number"
+          min={1}
+          disabled={!fontSizeEnabled}
+          value={obj.maxFontSize}
+          onChange={(value) => set('maxFontSize', value)}
+        />
       </FieldRow>
       <FieldRow>
         <label className="canvas-editor-field">
@@ -178,76 +178,59 @@ function TextboxFields({ obj, onChange }) {
         </label>
       </FieldRow>
       <FieldRow className="canvas-editor-field-row--quad">
-        <label className="canvas-editor-field">
-          <span>X</span>
-          <input type="number" value={obj.x} onChange={(e) => set('x', Number(e.target.value))} />
-        </label>
-        <label className="canvas-editor-field">
-          <span>Y</span>
-          <input type="number" value={obj.y} onChange={(e) => set('y', Number(e.target.value))} />
-        </label>
-        <label className="canvas-editor-field">
-          <span>Breite</span>
-          <input
-            type="number"
-            min={1}
-            value={obj.w}
-            onChange={(e) => set('w', Number(e.target.value))}
-          />
-        </label>
-        <label className="canvas-editor-field">
-          <span>Höhe</span>
-          <input
-            type="number"
-            min={1}
-            value={obj.h}
-            onChange={(e) => set('h', Number(e.target.value))}
-          />
-        </label>
+        <TextField label="X" type="number" value={obj.x} onChange={(value) => set('x', value)} />
+        <TextField label="Y" type="number" value={obj.y} onChange={(value) => set('y', value)} />
+        <TextField
+          label="Breite"
+          type="number"
+          min={1}
+          value={obj.w}
+          onChange={(value) => set('w', value)}
+        />
+        <TextField
+          label="Höhe"
+          type="number"
+          min={1}
+          value={obj.h}
+          onChange={(value) => set('h', value)}
+        />
       </FieldRow>
       <FieldRow className="canvas-editor-field-row--quad">
-        <label className="canvas-editor-field">
-          <span>Links</span>
-          <input
-            type="number"
-            min={0}
-            value={obj.marginLeft ?? 0}
-            onChange={(e) => set('marginLeft', Math.max(0, Number(e.target.value)))}
-          />
-        </label>
-        <label className="canvas-editor-field">
-          <span>Oben</span>
-          <input
-            type="number"
-            min={0}
-            value={obj.marginTop ?? 0}
-            onChange={(e) => set('marginTop', Math.max(0, Number(e.target.value)))}
-          />
-        </label>
-        <label className="canvas-editor-field">
-          <span>Rechts</span>
-          <input
-            type="number"
-            min={0}
-            value={obj.marginRight ?? 0}
-            onChange={(e) => set('marginRight', Math.max(0, Number(e.target.value)))}
-          />
-        </label>
-        <label className="canvas-editor-field">
-          <span>Unten</span>
-          <input
-            type="number"
-            min={0}
-            value={obj.marginBottom ?? 0}
-            onChange={(e) => set('marginBottom', Math.max(0, Number(e.target.value)))}
-          />
-        </label>
+        <TextField
+          label="Links"
+          type="number"
+          min={0}
+          value={obj.marginLeft ?? 0}
+          onChange={(value) => set('marginLeft', Math.max(0, value))}
+        />
+        <TextField
+          label="Oben"
+          type="number"
+          min={0}
+          value={obj.marginTop ?? 0}
+          onChange={(value) => set('marginTop', Math.max(0, value))}
+        />
+        <TextField
+          label="Rechts"
+          type="number"
+          min={0}
+          value={obj.marginRight ?? 0}
+          onChange={(value) => set('marginRight', Math.max(0, value))}
+        />
+        <TextField
+          label="Unten"
+          type="number"
+          min={0}
+          value={obj.marginBottom ?? 0}
+          onChange={(value) => set('marginBottom', Math.max(0, value))}
+        />
       </FieldRow>
     </>
   )
 }
 
-function BarcodeFields({ obj, onChange }) {
+function BarcodeFields({ obj, onChange, components }) {
+  const { TextField } = components
   const set = (field, value) => onChange(field, value)
   const codeError = getBarcodeValidationError(obj.code)
 
@@ -260,49 +243,37 @@ function BarcodeFields({ obj, onChange }) {
           <option value="EAN8">EAN-8</option>
         </select>
       </label>
-      <label className="canvas-editor-field">
-        <span>Code</span>
-        <input type="text" value={obj.code} onChange={(e) => set('code', e.target.value)} />
-      </label>
+      <TextField label="Code" value={obj.code} onChange={(value) => set('code', value)} />
       {codeError ? (
         <p className="canvas-editor-panel__field-error" role="alert">
           {BARCODE_INVALID_MESSAGE}
         </p>
       ) : null}
       <FieldRow>
-        <label className="canvas-editor-field">
-          <span>X</span>
-          <input type="number" value={obj.x} onChange={(e) => set('x', Number(e.target.value))} />
-        </label>
-        <label className="canvas-editor-field">
-          <span>Y</span>
-          <input type="number" value={obj.y} onChange={(e) => set('y', Number(e.target.value))} />
-        </label>
+        <TextField label="X" type="number" value={obj.x} onChange={(value) => set('x', value)} />
+        <TextField label="Y" type="number" value={obj.y} onChange={(value) => set('y', value)} />
       </FieldRow>
-      <label className="canvas-editor-field">
-        <span>Balkenhöhe</span>
-        <input
-          type="number"
-          min={1}
-          value={obj.h}
-          onChange={(e) => set('h', Number(e.target.value))}
-        />
-      </label>
-      <label className="canvas-editor-field">
-        <span>Modulbreite</span>
-        <input
-          type="number"
-          min={1}
-          step={1}
-          value={obj.scale}
-          onChange={(e) => set('scale', Number(e.target.value))}
-        />
-      </label>
+      <TextField
+        label="Balkenhöhe"
+        type="number"
+        min={1}
+        value={obj.h}
+        onChange={(value) => set('h', value)}
+      />
+      <TextField
+        label="Modulbreite"
+        type="number"
+        min={1}
+        step={1}
+        value={obj.scale}
+        onChange={(value) => set('scale', value)}
+      />
     </>
   )
 }
 
-function SvgEditDialog({ initialValue, onSave, onClose }) {
+function SvgEditDialog({ initialValue, onSave, onClose, components }) {
+  const { Button, TextField } = components
   const [draft, setDraft] = useState(initialValue)
 
   return (
@@ -319,32 +290,27 @@ function SvgEditDialog({ initialValue, onSave, onClose }) {
         onClick={(e) => e.stopPropagation()}
       >
         <h4 className="canvas-editor-modal__title">SVG bearbeiten</h4>
-        <textarea
-          className="canvas-editor-modal__textarea"
+        <TextField
+          className="canvas-editor-field canvas-editor-modal__textarea-field"
+          multiline
           rows={14}
           value={draft}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={setDraft}
           placeholder="<svg>...</svg>"
-          autoFocus
         />
         <div className="canvas-editor-modal__actions">
-          <button type="button" className="canvas-editor-btn" onClick={onClose}>
-            Abbrechen
-          </button>
-          <button
-            type="button"
-            className="canvas-editor-btn canvas-editor-btn--primary"
-            onClick={() => onSave(draft)}
-          >
+          <Button onClick={onClose}>Abbrechen</Button>
+          <Button variant="primary" onClick={() => onSave(draft)}>
             Übernehmen
-          </button>
+          </Button>
         </div>
       </div>
     </div>
   )
 }
 
-function PngFields({ obj, onChange }) {
+function PngFields({ obj, onChange, components }) {
+  const { Button, TextField, Slider } = components
   const set = (field, value) => onChange(field, value)
   const blackpoint = obj.blackpoint ?? 128
   const format = imageSrcFormat(obj.src)
@@ -354,35 +320,24 @@ function PngFields({ obj, onChange }) {
   return (
     <>
       <FieldRow>
-        <label className="canvas-editor-field">
-          <span>X</span>
-          <input type="number" value={obj.x} onChange={(e) => set('x', Number(e.target.value))} />
-        </label>
-        <label className="canvas-editor-field">
-          <span>Y</span>
-          <input type="number" value={obj.y} onChange={(e) => set('y', Number(e.target.value))} />
-        </label>
+        <TextField label="X" type="number" value={obj.x} onChange={(value) => set('x', value)} />
+        <TextField label="Y" type="number" value={obj.y} onChange={(value) => set('y', value)} />
       </FieldRow>
-      <label className="canvas-editor-field">
-        <span>Skalierung</span>
-        <input
-          type="number"
-          min={PNG_SCALE_MIN}
-          step={0.01}
-          value={obj.scale}
-          onChange={(e) => set('scale', Math.max(PNG_SCALE_MIN, Number(e.target.value)))}
-        />
-      </label>
-      <label className="canvas-editor-field">
-        <span>Schwarzpunkt ({blackpoint})</span>
-        <input
-          type="range"
-          min={0}
-          max={255}
-          value={blackpoint}
-          onChange={(e) => set('blackpoint', Number(e.target.value))}
-        />
-      </label>
+      <TextField
+        label="Skalierung"
+        type="number"
+        min={PNG_SCALE_MIN}
+        step={0.01}
+        value={obj.scale}
+        onChange={(value) => set('scale', Math.max(PNG_SCALE_MIN, value))}
+      />
+      <Slider
+        label={`Schwarzpunkt (${blackpoint})`}
+        min={0}
+        max={255}
+        value={blackpoint}
+        onChange={(value) => set('blackpoint', value)}
+      />
       <label className="canvas-editor-field">
         <span>Bild</span>
         <input
@@ -411,13 +366,7 @@ function PngFields({ obj, onChange }) {
           {localizedImageSummary(obj.src)}
         </p>
         {canEditSvg ? (
-          <button
-            type="button"
-            className="canvas-editor-btn"
-            onClick={() => setSvgDialogOpen(true)}
-          >
-            SVG bearbeiten
-          </button>
+          <Button onClick={() => setSvgDialogOpen(true)}>SVG bearbeiten</Button>
         ) : null}
       </div>
       {svgDialogOpen ? (
@@ -428,13 +377,23 @@ function PngFields({ obj, onChange }) {
             set('src', imageSrcForStore(svg))
             setSvgDialogOpen(false)
           }}
+          components={components}
         />
       ) : null}
     </>
   )
 }
 
-export default function EditorPanel({ selected, onUpdate, onDelete, onCopy, clipboard, onPaste }) {
+export default function EditorPanel({
+  selected,
+  onUpdate,
+  onDelete,
+  onCopy,
+  clipboard,
+  onPaste,
+  components,
+}) {
+  const { Button } = components
   const activeType = selected?.type ?? null
 
   const objFor = (type) => (selected?.type === type ? selected : PLACEHOLDER[type])
@@ -455,30 +414,14 @@ export default function EditorPanel({ selected, onUpdate, onDelete, onCopy, clip
         {hasActions ? (
           <div className="canvas-editor-panel__header-actions">
             {showPaste ? (
-              <button
-                type="button"
-                className="canvas-editor-btn"
-                onClick={() => onPaste?.(clipboard)}
-              >
-                Einfügen
-              </button>
+              <Button onClick={() => onPaste?.(clipboard)}>Einfügen</Button>
             ) : null}
             {selected ? (
               <>
-                <button
-                  type="button"
-                  className="canvas-editor-btn"
-                  onClick={() => onCopy?.(selected)}
-                >
-                  Kopie
-                </button>
-                <button
-                  type="button"
-                  className="canvas-editor-btn canvas-editor-btn--danger"
-                  onClick={() => onDelete(selected.id)}
-                >
+                <Button onClick={() => onCopy?.(selected)}>Kopie</Button>
+                <Button variant="danger" onClick={() => onDelete(selected.id)}>
                   Löschen
-                </button>
+                </Button>
               </>
             ) : null}
           </div>
@@ -488,13 +431,13 @@ export default function EditorPanel({ selected, onUpdate, onDelete, onCopy, clip
       </div>
       <div className="canvas-editor-panel__fields-stack">
         <div className={layerClass('textbox', activeType)}>
-          <TextboxFields obj={objFor('textbox')} onChange={onChangeFor('textbox')} />
+          <TextboxFields obj={objFor('textbox')} onChange={onChangeFor('textbox')} components={components} />
         </div>
         <div className={layerClass('barcode', activeType)}>
-          <BarcodeFields obj={objFor('barcode')} onChange={onChangeFor('barcode')} />
+          <BarcodeFields obj={objFor('barcode')} onChange={onChangeFor('barcode')} components={components} />
         </div>
         <div className={layerClass('png', activeType)}>
-          <PngFields obj={objFor('png')} onChange={onChangeFor('png')} />
+          <PngFields obj={objFor('png')} onChange={onChangeFor('png')} components={components} />
         </div>
       </div>
       {!selected ? (

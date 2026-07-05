@@ -190,13 +190,9 @@
   color: #0f172a;
 }
 
-.canvas-editor-modal__textarea {
-  width: 100%;
+.canvas-editor-modal__textarea-field textarea {
   min-height: 220px;
-  box-sizing: border-box;
   padding: 0.5rem 0.6rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 4px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 0.8125rem;
   resize: vertical;
