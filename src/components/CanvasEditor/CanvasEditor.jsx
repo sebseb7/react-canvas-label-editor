@@ -77,6 +77,9 @@ export default class CanvasEditor extends Component {
     ensureEditorFontsLoaded().then(() => this.redraw())
     window.addEventListener('mousemove', this.onWindowMouseMove)
     window.addEventListener('mouseup', this.onWindowMouseUp)
+    window.addEventListener('touchmove', this.onWindowMouseMove, { passive: false })
+    window.addEventListener('touchend', this.onWindowMouseUp)
+    window.addEventListener('touchcancel', this.onWindowMouseUp)
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -103,6 +106,9 @@ export default class CanvasEditor extends Component {
   componentWillUnmount() {
     window.removeEventListener('mousemove', this.onWindowMouseMove)
     window.removeEventListener('mouseup', this.onWindowMouseUp)
+    window.removeEventListener('touchmove', this.onWindowMouseMove)
+    window.removeEventListener('touchend', this.onWindowMouseUp)
+    window.removeEventListener('touchcancel', this.onWindowMouseUp)
   }
 
   getSelected() {
@@ -159,13 +165,15 @@ export default class CanvasEditor extends Component {
     const rect = canvas.getBoundingClientRect()
     const scaleX = canvas.width / rect.width
     const scaleY = canvas.height / rect.height
+    const point = event.touches?.[0] ?? event.changedTouches?.[0] ?? event
     return {
-      x: (event.clientX - rect.left) * scaleX,
-      y: (event.clientY - rect.top) * scaleY,
+      x: (point.clientX - rect.left) * scaleX,
+      y: (point.clientY - rect.top) * scaleY,
     }
   }
 
   onCanvasMouseDown = (event) => {
+    if (event.touches) event.preventDefault()
     const { x, y } = this.canvasPoint(event)
     const { objects } = this.props
     const { selectedId } = this.state
@@ -219,6 +227,7 @@ export default class CanvasEditor extends Component {
   onWindowMouseMove = (event) => {
     const { drag } = this.state
     if (!drag) return
+    if (event.touches) event.preventDefault()
     const { x, y } = this.canvasPoint(event)
     const dx = x - drag.startX
     const dy = y - drag.startY
@@ -440,6 +449,7 @@ export default class CanvasEditor extends Component {
               height={height}
               onMouseDown={this.onCanvasMouseDown}
               onMouseMove={this.onCanvasMouseMove}
+              onTouchStart={this.onCanvasMouseDown}
             />
           </div>
           <EditorPanel

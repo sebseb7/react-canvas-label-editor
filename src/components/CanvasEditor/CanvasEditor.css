@@ -107,6 +107,7 @@
   display: block;
   background: #fff;
   cursor: default;
+  touch-action: none;
 }
 
 .canvas-editor-btn {

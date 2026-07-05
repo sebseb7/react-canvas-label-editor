@@ -5,7 +5,7 @@ React class component for editing a template for a 1-bit canvas-rendered label, 
 ![Screenshot of the dev app](public/Screenshot.jpg)
 
 ```
-npm i github:sebseb7/react-canvas-label-editor#v11.0.0
+npm i github:sebseb7/react-canvas-label-editor#v12.0.0
 ```
 
 ## Usage
