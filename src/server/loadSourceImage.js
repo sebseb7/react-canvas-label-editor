@@ -1,9 +1,9 @@
 import { loadImage } from 'canvas'
 import sharp from 'sharp'
-import { imageSrcForLoad, isRawSvg } from '../utils/imageSrc.js'
+import { ensureSvgDimensions, imageSrcForLoad, isRawSvg } from '../utils/imageSrc.js'
 
 async function svgToImage(svg) {
-  const pngBuffer = await sharp(Buffer.from(svg)).png().toBuffer()
+  const pngBuffer = await sharp(Buffer.from(ensureSvgDimensions(svg))).png().toBuffer()
   return loadImage(pngBuffer)
 }
 
