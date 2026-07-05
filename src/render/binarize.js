@@ -10,18 +10,30 @@ export function compositeLuminanceOnWhite(r, g, b, a) {
   return 0.299 * cr + 0.587 * cg + 0.114 * cb
 }
 
-function writePixel(data, index, value) {
+/** Below this, a source pixel is treated as fully transparent rather than ink. */
+const ALPHA_CUTOFF = 128
+
+function writePixel(data, index, value, alpha = 255) {
   data[index] = value
   data[index + 1] = value
   data[index + 2] = value
-  data[index + 3] = 255
+  data[index + 3] = alpha
 }
 
+/**
+ * Thresholds a single asset's pixels to 1-bit ink while keeping mostly-transparent
+ * pixels transparent, so PNG/SVG assets with a transparent background don't paint
+ * an opaque white box over whatever is layered underneath them.
+ */
 function binarizeThreshold(imageData, threshold) {
   const { data, width, height } = imageData
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       const i = (y * width + x) * 4
+      if (data[i + 3] < ALPHA_CUTOFF) {
+        writePixel(data, i, 255, 0)
+        continue
+      }
       const lum = compositeLuminanceOnWhite(data[i], data[i + 1], data[i + 2], data[i + 3])
       writePixel(data, i, lum <= threshold ? 0 : 255)
     }
