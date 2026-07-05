@@ -367,7 +367,7 @@ function PngFields({ obj, onChange }) {
   )
 }
 
-export default function EditorPanel({ selected, onUpdate, onDelete }) {
+export default function EditorPanel({ selected, onUpdate, onDelete, onCopy, clipboard, onPaste }) {
   const activeType = selected?.type ?? null
 
   const objFor = (type) => (selected?.type === type ? selected : PLACEHOLDER[type])
@@ -378,18 +378,43 @@ export default function EditorPanel({ selected, onUpdate, onDelete }) {
     }
   }
 
+  const showPaste = Boolean(clipboard)
+  const hasActions = Boolean(selected) || showPaste
+
   return (
     <aside className="canvas-editor-panel">
       <div className="canvas-editor-panel__header">
         <h3>{selected ? TYPE_LABELS[selected.type] ?? selected.type : 'Eigenschaften'}</h3>
-        {selected ? (
-          <button
-            type="button"
-            className="canvas-editor-btn canvas-editor-btn--danger"
-            onClick={() => onDelete(selected.id)}
-          >
-            Löschen
-          </button>
+        {hasActions ? (
+          <div className="canvas-editor-panel__header-actions">
+            {showPaste ? (
+              <button
+                type="button"
+                className="canvas-editor-btn"
+                onClick={() => onPaste?.(clipboard)}
+              >
+                Einfügen
+              </button>
+            ) : null}
+            {selected ? (
+              <>
+                <button
+                  type="button"
+                  className="canvas-editor-btn"
+                  onClick={() => onCopy?.(selected)}
+                >
+                  Kopie
+                </button>
+                <button
+                  type="button"
+                  className="canvas-editor-btn canvas-editor-btn--danger"
+                  onClick={() => onDelete(selected.id)}
+                >
+                  Löschen
+                </button>
+              </>
+            ) : null}
+          </div>
         ) : (
           <span className="canvas-editor-panel__header-spacer" aria-hidden="true" />
         )}

@@ -5,7 +5,7 @@ import { DEFAULT_TEXTBOX_FONT } from '../../utils/textboxFonts'
  * @property {string} id
  * @property {'textbox'} type
  * @property {string} text
- * @property {'raster7x9' | 'outfit' | 'barlow-semi-condensed'} [font]
+ * @property {'raster7x9' | 'outfit-light' | 'outfit' | 'outfit-bold' | 'outfit-black' | 'barlow-semi-condensed'} [font]
  * @property {number} [blackpoint] Luminance threshold (0–255) for TTF 1-bit conversion
  * @property {number} [minFontSize] Auto-fit bounds for TTF fonts only
  * @property {number} [maxFontSize] Auto-fit bounds for TTF fonts only

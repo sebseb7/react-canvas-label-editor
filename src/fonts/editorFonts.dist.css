@@ -1,9 +1,33 @@
 @font-face {
   font-family: 'Outfit';
   font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('./fonts/Outfit-Light.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
   font-weight: 500;
   font-display: swap;
   src: url('./fonts/Outfit-Medium.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./fonts/Outfit-Bold.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url('./fonts/Outfit-Black.ttf') format('truetype');
 }
 
 @font-face {

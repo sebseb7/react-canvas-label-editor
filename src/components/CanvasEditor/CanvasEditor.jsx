@@ -54,6 +54,8 @@ export default class CanvasEditor extends Component {
     objects: [],
     onChange: null,
     onHeightChange: null,
+    onCopy: null,
+    clipboard: null,
   }
 
   componentDidMount() {
@@ -121,6 +123,18 @@ export default class CanvasEditor extends Component {
 
   addObject(factory) {
     const obj = factory()
+    this.updateObjects([...this.props.objects, obj])
+    this.setState({ selectedId: obj.id })
+  }
+
+  pasteObject(clipboard) {
+    if (!clipboard) return
+    const obj = {
+      ...clipboard,
+      id: crypto.randomUUID(),
+      x: (clipboard.x ?? 0) + 20,
+      y: (clipboard.y ?? 0) + 20,
+    }
     this.updateObjects([...this.props.objects, obj])
     this.setState({ selectedId: obj.id })
   }
@@ -415,6 +429,9 @@ export default class CanvasEditor extends Component {
             selected={this.getSelected()}
             onUpdate={(id, patch) => this.updateObject(id, patch)}
             onDelete={(id) => this.deleteObject(id)}
+            onCopy={(obj) => this.props.onCopy?.(obj)}
+            clipboard={this.props.clipboard}
+            onPaste={(clipboard) => this.pasteObject(clipboard)}
           />
         </div>
       </div>

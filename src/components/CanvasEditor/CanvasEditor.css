@@ -71,6 +71,12 @@
   pointer-events: auto;
 }
 
+.canvas-editor-panel__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .canvas-editor-panel__header-spacer {
   display: inline-block;
   width: 3.5rem;

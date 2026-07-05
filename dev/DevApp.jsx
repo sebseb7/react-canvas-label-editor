@@ -38,6 +38,7 @@ export default function DevApp() {
   const [height, setHeight] = useState(CANVAS_HEIGHT_DEFAULT)
   const [previewUrl, setPreviewUrl] = useState(null)
   const [previewError, setPreviewError] = useState(null)
+  const [clipboard, setClipboard] = useState(null)
   const previewUrlRef = useRef(null)
 
   const replacePreview = (blob) => {
@@ -98,6 +99,8 @@ export default function DevApp() {
         onHeightChange={setHeight}
         objects={objects}
         onChange={setObjects}
+        onCopy={setClipboard}
+        clipboard={clipboard}
       />
       <section className="dev-app__preview">
         <h2>Label Preview</h2>

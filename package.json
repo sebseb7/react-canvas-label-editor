@@ -1,6 +1,6 @@
 {
   "name": "react-canvas-label-editor",
-  "version": "0.1.0",
+  "version": "5",
   "description": "React class component for editing 1-bit canvas label templates, with a Node.js rasterizer",
   "type": "module",
   "files": [

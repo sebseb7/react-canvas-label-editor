@@ -39,6 +39,8 @@ class App extends Component {
         onHeightChange={(height) => this.setState({ height })}
         objects={objects}
         onChange={(objects) => this.setState({ objects })}
+        clipboard={clipboard}
+        onCopy={(object) => this.setState({ clipboard: object })}
       />
     )
   }
