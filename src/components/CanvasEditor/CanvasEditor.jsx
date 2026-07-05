@@ -315,7 +315,7 @@ export default class CanvasEditor extends Component {
       ctx.strokeRect(obj.x, obj.y, size, size)
       ctx.fillStyle = '#94a3b8'
       ctx.font = '12px sans-serif'
-      ctx.fillText('PNG', obj.x + 8, obj.y + size / 2)
+      ctx.fillText('Image', obj.x + 8, obj.y + size / 2)
       ctx.restore()
       return
     }
@@ -401,7 +401,7 @@ export default class CanvasEditor extends Component {
             + Barcode
           </button>
           <button type="button" className="canvas-editor-btn" onClick={() => this.addObject(createPng)}>
-            + PNG
+            + Image
           </button>
           <label className="canvas-editor__height">
             <span>Höhe {height}</span>

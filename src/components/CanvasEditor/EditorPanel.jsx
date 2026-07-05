@@ -1,4 +1,5 @@
-import { imageSrcForStore, imageSrcSummary } from '../../utils/imageSrc'
+import { useState } from 'react'
+import { imageSrcForStore, imageSrcFormat, imageSrcSummary } from '../../utils/imageSrc'
 import { BARCODE_INVALID_MESSAGE, getBarcodeValidationError } from '../../utils/barcode'
 import {
   DEFAULT_TEXTBOX_FONT,
@@ -16,7 +17,7 @@ import { PNG_SCALE_MIN } from './constants'
 const TYPE_LABELS = {
   textbox: 'Textfeld',
   barcode: 'Barcode',
-  png: 'PNG',
+  png: 'Image',
 }
 
 function localizedImageSummary(src) {
@@ -301,9 +302,54 @@ function BarcodeFields({ obj, onChange }) {
   )
 }
 
+function SvgEditDialog({ initialValue, onSave, onClose }) {
+  const [draft, setDraft] = useState(initialValue)
+
+  return (
+    <div
+      className="canvas-editor-modal-overlay"
+      role="presentation"
+      onClick={onClose}
+    >
+      <div
+        className="canvas-editor-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="SVG bearbeiten"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h4 className="canvas-editor-modal__title">SVG bearbeiten</h4>
+        <textarea
+          className="canvas-editor-modal__textarea"
+          rows={14}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="<svg>...</svg>"
+          autoFocus
+        />
+        <div className="canvas-editor-modal__actions">
+          <button type="button" className="canvas-editor-btn" onClick={onClose}>
+            Abbrechen
+          </button>
+          <button
+            type="button"
+            className="canvas-editor-btn canvas-editor-btn--primary"
+            onClick={() => onSave(draft)}
+          >
+            Übernehmen
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function PngFields({ obj, onChange }) {
   const set = (field, value) => onChange(field, value)
   const blackpoint = obj.blackpoint ?? 128
+  const format = imageSrcFormat(obj.src)
+  const canEditSvg = format === 'svg' || !format
+  const [svgDialogOpen, setSvgDialogOpen] = useState(false)
 
   return (
     <>
@@ -360,9 +406,30 @@ function PngFields({ obj, onChange }) {
           }}
         />
       </label>
-      <p className="canvas-editor-panel__image-info">
-        {localizedImageSummary(obj.src)}
-      </p>
+      <div className="canvas-editor-field-row canvas-editor-field-row--info">
+        <p className="canvas-editor-panel__image-info">
+          {localizedImageSummary(obj.src)}
+        </p>
+        {canEditSvg ? (
+          <button
+            type="button"
+            className="canvas-editor-btn"
+            onClick={() => setSvgDialogOpen(true)}
+          >
+            SVG bearbeiten
+          </button>
+        ) : null}
+      </div>
+      {svgDialogOpen ? (
+        <SvgEditDialog
+          initialValue={format === 'svg' ? obj.src : ''}
+          onClose={() => setSvgDialogOpen(false)}
+          onSave={(svg) => {
+            set('src', imageSrcForStore(svg))
+            setSvgDialogOpen(false)
+          }}
+        />
+      ) : null}
     </>
   )
 }

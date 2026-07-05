@@ -132,6 +132,16 @@
   background: #fef2f2;
 }
 
+.canvas-editor-btn--primary {
+  color: #fff;
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.canvas-editor-btn--primary:hover {
+  background: #1d4ed8;
+}
+
 .canvas-editor-panel__image-info {
   margin: 0;
   font-size: 0.75rem;
@@ -139,6 +149,63 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.canvas-editor-field-row--info {
+  align-items: center;
+  grid-template-columns: 1fr auto;
+  gap: 0.5rem;
+}
+
+.canvas-editor-field-row--info .canvas-editor-panel__image-info {
+  min-width: 0;
+}
+
+.canvas-editor-modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.45);
+  z-index: 1000;
+}
+
+.canvas-editor-modal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: min(560px, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  padding: 1rem;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.25);
+}
+
+.canvas-editor-modal__title {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.canvas-editor-modal__textarea {
+  width: 100%;
+  min-height: 220px;
+  box-sizing: border-box;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8125rem;
+  resize: vertical;
+}
+
+.canvas-editor-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 .canvas-editor-panel__field-error {
