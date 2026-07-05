@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import {
   CanvasEditor,
   CANVAS_HEIGHT_DEFAULT,
+  CANVAS_HEIGHT_MIN,
+  CANVAS_HEIGHT_MAX,
   CANVAS_WIDTH,
 } from 'react-canvas-label-editor'
 import { createBarcode, createPng, createTextbox } from '../src/components/CanvasEditor/types.js'
@@ -59,7 +61,7 @@ export default function DevApp() {
         const res = await fetch('/api/render', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ height, objects }),
+          body: JSON.stringify({ height, width: CANVAS_WIDTH, objects }),
           signal: controller.signal,
         })
         if (!res.ok) {
@@ -95,6 +97,9 @@ export default function DevApp() {
   return (
     <div className="dev-app">
       <CanvasEditor
+        width={CANVAS_WIDTH}
+        minHeight={CANVAS_HEIGHT_MIN}
+        maxHeight={CANVAS_HEIGHT_MAX}
         height={height}
         onHeightChange={setHeight}
         objects={objects}

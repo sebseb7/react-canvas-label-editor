@@ -58,16 +58,17 @@ async function drawPng(ctx, obj) {
   ctx.drawImage(temp, obj.x, obj.y, logicalW, logicalH)
 }
 
-export async function renderLabel({ height, objects }) {
+export async function renderLabel({ height, width = CANVAS_WIDTH, objects }) {
+  const canvasWidth = Math.max(1, Math.round(width))
   const canvasHeight = Math.max(1, Math.round(height))
   const scale = LABEL_RENDER_SCALE
   const rasterTextboxes = []
 
-  const hiCanvas = createCanvas(CANVAS_WIDTH * scale, canvasHeight * scale)
+  const hiCanvas = createCanvas(canvasWidth * scale, canvasHeight * scale)
   const hiCtx = hiCanvas.getContext('2d')
   hiCtx.scale(scale, scale)
   hiCtx.fillStyle = '#ffffff'
-  hiCtx.fillRect(0, 0, CANVAS_WIDTH, canvasHeight)
+  hiCtx.fillRect(0, 0, canvasWidth, canvasHeight)
 
   for (const obj of objects) {
     switch (obj.type) {
@@ -89,10 +90,10 @@ export async function renderLabel({ height, objects }) {
     }
   }
 
-  const hiRes = hiCtx.getImageData(0, 0, CANVAS_WIDTH * scale, canvasHeight * scale)
-  const oneBit = downsampleTo1Bit(hiRes, CANVAS_WIDTH, canvasHeight, 128)
+  const hiRes = hiCtx.getImageData(0, 0, canvasWidth * scale, canvasHeight * scale)
+  const oneBit = downsampleTo1Bit(hiRes, canvasWidth, canvasHeight, 128)
 
-  const out = createCanvas(CANVAS_WIDTH, canvasHeight)
+  const out = createCanvas(canvasWidth, canvasHeight)
   const outCtx = out.getContext('2d')
   outCtx.putImageData(new ImageData(oneBit.data, oneBit.width, oneBit.height), 0, 0)
 

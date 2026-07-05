@@ -50,7 +50,10 @@ export default class CanvasEditor extends Component {
   }
 
   static defaultProps = {
+    width: CANVAS_WIDTH,
     height: CANVAS_HEIGHT_DEFAULT,
+    minHeight: CANVAS_HEIGHT_MIN,
+    maxHeight: CANVAS_HEIGHT_MAX,
     objects: [],
     onChange: null,
     onHeightChange: null,
@@ -233,7 +236,7 @@ export default class CanvasEditor extends Component {
     if (!canvas) return
 
     const ctx = canvas.getContext('2d')
-    const width = CANVAS_WIDTH
+    const width = this.props.width
     const height = this.canvasHeight()
     const { objects } = this.props
     const { selectedId } = this.state
@@ -352,7 +355,7 @@ export default class CanvasEditor extends Component {
   }
 
   fitPngToCanvas(obj, sourceImage) {
-    const width = CANVAS_WIDTH
+    const width = this.props.width
     const height = this.canvasHeight()
     const fitKey = `${obj.id}:${obj.src}`
     if (this.fittedPngKeys.has(fitKey)) return
@@ -389,6 +392,7 @@ export default class CanvasEditor extends Component {
   }
 
   render() {
+    const { width, minHeight, maxHeight } = this.props
     const height = this.canvasHeight()
 
     return (
@@ -407,8 +411,8 @@ export default class CanvasEditor extends Component {
             <span>Höhe {height}</span>
             <input
               type="range"
-              min={CANVAS_HEIGHT_MIN}
-              max={CANVAS_HEIGHT_MAX}
+              min={minHeight}
+              max={maxHeight}
               value={height}
               onChange={(e) => this.setCanvasHeight(Number(e.target.value))}
             />
@@ -419,7 +423,7 @@ export default class CanvasEditor extends Component {
             <canvas
               ref={this.canvasRef}
               className="canvas-editor__canvas"
-              width={CANVAS_WIDTH}
+              width={width}
               height={height}
               onMouseDown={this.onCanvasMouseDown}
               onMouseMove={this.onCanvasMouseMove}

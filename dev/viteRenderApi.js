@@ -19,7 +19,7 @@ function attachRenderApi(middlewares) {
     try {
       const raw = await readBody(req)
       const body = JSON.parse(raw.toString('utf8'))
-      const { height, objects } = body ?? {}
+      const { height, width, objects } = body ?? {}
 
       if (!Array.isArray(objects)) {
         res.statusCode = 400
@@ -31,6 +31,7 @@ function attachRenderApi(middlewares) {
       const start = performance.now()
       const png = await renderLabel({
         height: Number(height) || 200,
+        ...(width ? { width: Number(width) } : {}),
         objects,
       })
       const ms = Math.round(performance.now() - start)
