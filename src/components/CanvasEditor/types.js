@@ -52,7 +52,7 @@ export function createTextbox(overrides = {}) {
   return {
     id: crypto.randomUUID(),
     type: 'textbox',
-    text: 'Beispieltext',
+    text: 'Sample text',
     font: DEFAULT_TEXTBOX_FONT,
     blackpoint: 128,
     minFontSize: 14,

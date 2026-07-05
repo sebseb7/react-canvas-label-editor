@@ -1,36 +1,25 @@
 import { useState } from 'react'
-import { imageSrcForStore, imageSrcFormat, imageSrcSummary } from '../../utils/imageSrc'
-import { BARCODE_INVALID_MESSAGE, getBarcodeValidationError } from '../../utils/barcode'
+import { imageSrcForStore, imageSrcFormat } from '../../utils/imageSrc'
+import { getBarcodeValidationError } from '../../utils/barcode'
 import {
   DEFAULT_TEXTBOX_FONT,
   isTtfTextboxFont,
   TEXTBOX_FONT_OPTIONS,
 } from '../../utils/textboxFonts'
-import {
-  TEXTBOX_HALIGN_LABELS,
-  TEXTBOX_HALIGNS,
-  TEXTBOX_VALIGN_LABELS,
-  TEXTBOX_VALIGNS,
-} from '../../utils/textboxStyle'
+import { TEXTBOX_HALIGNS, TEXTBOX_VALIGNS } from '../../utils/textboxStyle'
 import { PNG_SCALE_MIN } from './constants'
 
-const TYPE_LABELS = {
-  textbox: 'Textfeld',
-  barcode: 'Barcode',
-  png: 'Image',
-}
-
-function localizedImageSummary(src) {
-  if (!src?.trim()) return 'Kein Bild'
-  const summary = imageSrcSummary(src)
-  if (summary === 'No image') return 'Kein Bild'
-  return summary.replace(/\((\d+) chars\)/, '($1 Zeichen)')
+function imageSummary(src, labels) {
+  if (!src?.trim()) return labels.png.noImage
+  const format = imageSrcFormat(src)
+  if (!format) return labels.png.noImage
+  return labels.png.imageSummary(format.toUpperCase(), src.trim().length)
 }
 
 const PLACEHOLDER = {
   textbox: {
     type: 'textbox',
-    text: 'Beispieltext',
+    text: 'Sample text',
     font: DEFAULT_TEXTBOX_FONT,
     blackpoint: 128,
     minFontSize: 14,
@@ -84,8 +73,9 @@ function FieldRow({ children, className }) {
   )
 }
 
-function TextboxFields({ obj, onChange, components }) {
+function TextboxFields({ obj, onChange, components, labels }) {
   const { TextField } = components
+  const t = labels.textbox
   const set = (field, value) => onChange(field, value)
   const font = obj.font ?? DEFAULT_TEXTBOX_FONT
   const fontSizeEnabled = isTtfTextboxFont(font)
@@ -94,7 +84,7 @@ function TextboxFields({ obj, onChange, components }) {
   return (
     <>
       <label className="canvas-editor-field">
-        <span>Schriftart</span>
+        <span>{t.font}</span>
         <select value={font} onChange={(e) => set('font', e.target.value)}>
           {TEXTBOX_FONT_OPTIONS.map((option) => (
             <option key={option.id} value={option.id}>
@@ -104,7 +94,7 @@ function TextboxFields({ obj, onChange, components }) {
         </select>
       </label>
       <TextField
-        label="Text"
+        label={t.text}
         multiline
         rows={3}
         value={obj.text}
@@ -112,7 +102,7 @@ function TextboxFields({ obj, onChange, components }) {
       />
       <FieldRow className={fontSizeEnabled ? undefined : 'canvas-editor-field-row--disabled'}>
         <TextField
-          label="Min. Schriftgröße"
+          label={t.minFontSize}
           type="number"
           min={1}
           disabled={!fontSizeEnabled}
@@ -120,7 +110,7 @@ function TextboxFields({ obj, onChange, components }) {
           onChange={(value) => set('minFontSize', value)}
         />
         <TextField
-          label="Max. Schriftgröße"
+          label={t.maxFontSize}
           type="number"
           min={1}
           disabled={!fontSizeEnabled}
@@ -130,21 +120,21 @@ function TextboxFields({ obj, onChange, components }) {
       </FieldRow>
       <FieldRow>
         <label className="canvas-editor-field">
-          <span>Horizontal</span>
+          <span>{t.horizontal}</span>
           <select value={obj.halign ?? 'left'} onChange={(e) => set('halign', e.target.value)}>
             {TEXTBOX_HALIGNS.map((id) => (
               <option key={id} value={id}>
-                {TEXTBOX_HALIGN_LABELS[id]}
+                {t.halign[id]}
               </option>
             ))}
           </select>
         </label>
         <label className="canvas-editor-field">
-          <span>Vertikal</span>
+          <span>{t.vertical}</span>
           <select value={obj.valign ?? 'top'} onChange={(e) => set('valign', e.target.value)}>
             {TEXTBOX_VALIGNS.map((id) => (
               <option key={id} value={id}>
-                {TEXTBOX_VALIGN_LABELS[id]}
+                {t.valign[id]}
               </option>
             ))}
           </select>
@@ -152,7 +142,7 @@ function TextboxFields({ obj, onChange, components }) {
       </FieldRow>
       <FieldRow>
         <label className="canvas-editor-field canvas-editor-field--checkbox">
-          <span>Farben invertieren</span>
+          <span>{t.invertColors}</span>
           <input
             type="checkbox"
             checked={invert}
@@ -167,7 +157,7 @@ function TextboxFields({ obj, onChange, components }) {
             .filter(Boolean)
             .join(' ')}
         >
-          <span>Eckenradius</span>
+          <span>{t.cornerRadius}</span>
           <input
             type="number"
             min={0}
@@ -178,17 +168,17 @@ function TextboxFields({ obj, onChange, components }) {
         </label>
       </FieldRow>
       <FieldRow className="canvas-editor-field-row--quad">
-        <TextField label="X" type="number" value={obj.x} onChange={(value) => set('x', value)} />
-        <TextField label="Y" type="number" value={obj.y} onChange={(value) => set('y', value)} />
+        <TextField label={t.x} type="number" value={obj.x} onChange={(value) => set('x', value)} />
+        <TextField label={t.y} type="number" value={obj.y} onChange={(value) => set('y', value)} />
         <TextField
-          label="Breite"
+          label={t.width}
           type="number"
           min={1}
           value={obj.w}
           onChange={(value) => set('w', value)}
         />
         <TextField
-          label="Höhe"
+          label={t.height}
           type="number"
           min={1}
           value={obj.h}
@@ -197,28 +187,28 @@ function TextboxFields({ obj, onChange, components }) {
       </FieldRow>
       <FieldRow className="canvas-editor-field-row--quad">
         <TextField
-          label="Links"
+          label={t.marginLeft}
           type="number"
           min={0}
           value={obj.marginLeft ?? 0}
           onChange={(value) => set('marginLeft', Math.max(0, value))}
         />
         <TextField
-          label="Oben"
+          label={t.marginTop}
           type="number"
           min={0}
           value={obj.marginTop ?? 0}
           onChange={(value) => set('marginTop', Math.max(0, value))}
         />
         <TextField
-          label="Rechts"
+          label={t.marginRight}
           type="number"
           min={0}
           value={obj.marginRight ?? 0}
           onChange={(value) => set('marginRight', Math.max(0, value))}
         />
         <TextField
-          label="Unten"
+          label={t.marginBottom}
           type="number"
           min={0}
           value={obj.marginBottom ?? 0}
@@ -229,39 +219,40 @@ function TextboxFields({ obj, onChange, components }) {
   )
 }
 
-function BarcodeFields({ obj, onChange, components }) {
+function BarcodeFields({ obj, onChange, components, labels }) {
   const { TextField } = components
+  const t = labels.barcode
   const set = (field, value) => onChange(field, value)
-  const codeError = getBarcodeValidationError(obj.code)
+  const codeError = getBarcodeValidationError(obj.code, t.invalidCode)
 
   return (
     <>
       <label className="canvas-editor-field">
-        <span>Format</span>
+        <span>{t.format}</span>
         <select value={obj.format || 'EAN13'} onChange={(e) => set('format', e.target.value)}>
           <option value="EAN13">EAN-13</option>
           <option value="EAN8">EAN-8</option>
         </select>
       </label>
-      <TextField label="Code" value={obj.code} onChange={(value) => set('code', value)} />
+      <TextField label={t.code} value={obj.code} onChange={(value) => set('code', value)} />
       {codeError ? (
         <p className="canvas-editor-panel__field-error" role="alert">
-          {BARCODE_INVALID_MESSAGE}
+          {codeError}
         </p>
       ) : null}
       <FieldRow>
-        <TextField label="X" type="number" value={obj.x} onChange={(value) => set('x', value)} />
-        <TextField label="Y" type="number" value={obj.y} onChange={(value) => set('y', value)} />
+        <TextField label={t.x} type="number" value={obj.x} onChange={(value) => set('x', value)} />
+        <TextField label={t.y} type="number" value={obj.y} onChange={(value) => set('y', value)} />
       </FieldRow>
       <TextField
-        label="Balkenhöhe"
+        label={t.barHeight}
         type="number"
         min={1}
         value={obj.h}
         onChange={(value) => set('h', value)}
       />
       <TextField
-        label="Modulbreite"
+        label={t.moduleWidth}
         type="number"
         min={1}
         step={1}
@@ -272,8 +263,9 @@ function BarcodeFields({ obj, onChange, components }) {
   )
 }
 
-function SvgEditDialog({ initialValue, onSave, onClose, components }) {
+function SvgEditDialog({ initialValue, onSave, onClose, components, labels }) {
   const { Button, TextField } = components
+  const t = labels.png
   const [draft, setDraft] = useState(initialValue)
 
   return (
@@ -286,22 +278,22 @@ function SvgEditDialog({ initialValue, onSave, onClose, components }) {
         className="canvas-editor-modal"
         role="dialog"
         aria-modal="true"
-        aria-label="SVG bearbeiten"
+        aria-label={t.editSvgTitle}
         onClick={(e) => e.stopPropagation()}
       >
-        <h4 className="canvas-editor-modal__title">SVG bearbeiten</h4>
+        <h4 className="canvas-editor-modal__title">{t.editSvgTitle}</h4>
         <TextField
           className="canvas-editor-field canvas-editor-modal__textarea-field"
           multiline
           rows={14}
           value={draft}
           onChange={setDraft}
-          placeholder="<svg>...</svg>"
+          placeholder={t.svgPlaceholder}
         />
         <div className="canvas-editor-modal__actions">
-          <Button onClick={onClose}>Abbrechen</Button>
+          <Button onClick={onClose}>{t.cancel}</Button>
           <Button variant="primary" onClick={() => onSave(draft)}>
-            Übernehmen
+            {t.apply}
           </Button>
         </div>
       </div>
@@ -309,8 +301,9 @@ function SvgEditDialog({ initialValue, onSave, onClose, components }) {
   )
 }
 
-function PngFields({ obj, onChange, components }) {
+function PngFields({ obj, onChange, components, labels }) {
   const { Button, TextField, Slider } = components
+  const t = labels.png
   const set = (field, value) => onChange(field, value)
   const blackpoint = obj.blackpoint ?? 128
   const format = imageSrcFormat(obj.src)
@@ -320,11 +313,11 @@ function PngFields({ obj, onChange, components }) {
   return (
     <>
       <FieldRow>
-        <TextField label="X" type="number" value={obj.x} onChange={(value) => set('x', value)} />
-        <TextField label="Y" type="number" value={obj.y} onChange={(value) => set('y', value)} />
+        <TextField label={t.x} type="number" value={obj.x} onChange={(value) => set('x', value)} />
+        <TextField label={t.y} type="number" value={obj.y} onChange={(value) => set('y', value)} />
       </FieldRow>
       <TextField
-        label="Skalierung"
+        label={t.scale}
         type="number"
         min={PNG_SCALE_MIN}
         step={0.01}
@@ -332,14 +325,14 @@ function PngFields({ obj, onChange, components }) {
         onChange={(value) => set('scale', Math.max(PNG_SCALE_MIN, value))}
       />
       <Slider
-        label={`Schwarzpunkt (${blackpoint})`}
+        label={t.blackpoint(blackpoint)}
         min={0}
         max={255}
         value={blackpoint}
         onChange={(value) => set('blackpoint', value)}
       />
       <label className="canvas-editor-field">
-        <span>Bild</span>
+        <span>{t.image}</span>
         <input
           type="file"
           accept="image/png,image/jpeg,image/svg+xml,.svg"
@@ -363,10 +356,10 @@ function PngFields({ obj, onChange, components }) {
       </label>
       <div className="canvas-editor-field-row canvas-editor-field-row--info">
         <p className="canvas-editor-panel__image-info">
-          {localizedImageSummary(obj.src)}
+          {imageSummary(obj.src, labels)}
         </p>
         {canEditSvg ? (
-          <Button onClick={() => setSvgDialogOpen(true)}>SVG bearbeiten</Button>
+          <Button onClick={() => setSvgDialogOpen(true)}>{t.editSvg}</Button>
         ) : null}
       </div>
       {svgDialogOpen ? (
@@ -378,6 +371,7 @@ function PngFields({ obj, onChange, components }) {
             setSvgDialogOpen(false)
           }}
           components={components}
+          labels={labels}
         />
       ) : null}
     </>
@@ -392,11 +386,18 @@ export default function EditorPanel({
   clipboard,
   onPaste,
   components,
+  labels,
 }) {
   const { Button } = components
   const activeType = selected?.type ?? null
 
-  const objFor = (type) => (selected?.type === type ? selected : PLACEHOLDER[type])
+  const objFor = (type) => {
+    if (selected?.type === type) return selected
+    if (type === 'textbox') {
+      return { ...PLACEHOLDER.textbox, text: labels.textbox.placeholderText }
+    }
+    return PLACEHOLDER[type]
+  }
 
   const onChangeFor = (type) => (field, value) => {
     if (selected?.type === type) {
@@ -410,17 +411,17 @@ export default function EditorPanel({
   return (
     <aside className="canvas-editor-panel">
       <div className="canvas-editor-panel__header">
-        <h3>{selected ? TYPE_LABELS[selected.type] ?? selected.type : 'Eigenschaften'}</h3>
+        <h3>{selected ? labels.panel.titles[selected.type] ?? selected.type : labels.panel.titles.default}</h3>
         {hasActions ? (
           <div className="canvas-editor-panel__header-actions">
             {showPaste ? (
-              <Button onClick={() => onPaste?.(clipboard)}>Einfügen</Button>
+              <Button onClick={() => onPaste?.(clipboard)}>{labels.panel.paste}</Button>
             ) : null}
             {selected ? (
               <>
-                <Button onClick={() => onCopy?.(selected)}>Kopie</Button>
+                <Button onClick={() => onCopy?.(selected)}>{labels.panel.copy}</Button>
                 <Button variant="danger" onClick={() => onDelete(selected.id)}>
-                  Löschen
+                  {labels.panel.delete}
                 </Button>
               </>
             ) : null}
@@ -431,18 +432,18 @@ export default function EditorPanel({
       </div>
       <div className="canvas-editor-panel__fields-stack">
         <div className={layerClass('textbox', activeType)}>
-          <TextboxFields obj={objFor('textbox')} onChange={onChangeFor('textbox')} components={components} />
+          <TextboxFields obj={objFor('textbox')} onChange={onChangeFor('textbox')} components={components} labels={labels} />
         </div>
         <div className={layerClass('barcode', activeType)}>
-          <BarcodeFields obj={objFor('barcode')} onChange={onChangeFor('barcode')} components={components} />
+          <BarcodeFields obj={objFor('barcode')} onChange={onChangeFor('barcode')} components={components} labels={labels} />
         </div>
         <div className={layerClass('png', activeType)}>
-          <PngFields obj={objFor('png')} onChange={onChangeFor('png')} components={components} />
+          <PngFields obj={objFor('png')} onChange={onChangeFor('png')} components={components} labels={labels} />
         </div>
       </div>
       {!selected ? (
         <p className="canvas-editor-panel__hint">
-          Klicke auf ein Objekt, um es zu bearbeiten, oder erstelle ein neues Objekt.
+          {labels.panel.hint}
         </p>
       ) : null}
     </aside>

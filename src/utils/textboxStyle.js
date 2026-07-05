@@ -5,15 +5,15 @@ export const TEXTBOX_HALIGNS = /** @type {const} */ (['left', 'center', 'right']
 export const TEXTBOX_VALIGNS = /** @type {const} */ (['top', 'middle', 'bottom'])
 
 export const TEXTBOX_HALIGN_LABELS = {
-  left: 'Links',
-  center: 'Mitte',
-  right: 'Rechts',
+  left: 'Left',
+  center: 'Center',
+  right: 'Right',
 }
 
 export const TEXTBOX_VALIGN_LABELS = {
-  top: 'Oben',
-  middle: 'Mitte',
-  bottom: 'Unten',
+  top: 'Top',
+  middle: 'Middle',
+  bottom: 'Bottom',
 }
 
 /** @param {CanvasRenderingContext2D} ctx */

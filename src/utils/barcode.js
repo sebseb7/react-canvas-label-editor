@@ -5,7 +5,7 @@ const cache = new Map()
 
 /** @typedef {'EAN8' | 'EAN13'} BarcodeFormat */
 
-export const BARCODE_INVALID_MESSAGE = 'Ungültiger Barcode'
+export const BARCODE_INVALID_MESSAGE = 'Invalid barcode'
 
 /** JsBarcode `font` / `fontOptions` for the human-readable EAN digits. */
 export function barcodeTextFontOptions(serverFamily) {
@@ -16,10 +16,10 @@ export function barcodeTextFontOptions(serverFamily) {
   }
 }
 
-export function getBarcodeValidationError(code) {
+export function getBarcodeValidationError(code, message = BARCODE_INVALID_MESSAGE) {
   const trimmed = String(code ?? '').trim()
   if (!trimmed) return null
-  if (/\D/.test(trimmed)) return BARCODE_INVALID_MESSAGE
+  if (/\D/.test(trimmed)) return message
   return null
 }
 
@@ -41,9 +41,9 @@ export function normalizeBarcodeCode(code, format) {
   return digits.length >= 13 ? digits.slice(0, 13) : digits.padStart(12, '0').slice(-12)
 }
 
-function barcodeCacheKey(obj) {
+function barcodeCacheKey(obj, invalidMessage) {
   const format = resolveBarcodeFormat(obj)
-  return `${format}|${obj.code}|${obj.scale}|${obj.h}`
+  return `${format}|${obj.code}|${obj.scale}|${obj.h}|${invalidMessage}`
 }
 
 function drawInvalid(canvas, message = BARCODE_INVALID_MESSAGE) {
@@ -60,13 +60,13 @@ function drawInvalid(canvas, message = BARCODE_INVALID_MESSAGE) {
   return { canvas, width: canvas.width, height: canvas.height }
 }
 
-export function renderBarcode(obj) {
-  const key = barcodeCacheKey(obj)
+export function renderBarcode(obj, invalidMessage = BARCODE_INVALID_MESSAGE) {
+  const key = barcodeCacheKey(obj, invalidMessage)
   const cached = cache.get(key)
   if (cached) return cached
 
   const format = resolveBarcodeFormat(obj)
-  const validationError = getBarcodeValidationError(obj.code)
+  const validationError = getBarcodeValidationError(obj.code, invalidMessage)
   const canvas = document.createElement('canvas')
 
   if (validationError) {
@@ -91,7 +91,7 @@ export function renderBarcode(obj) {
       textMargin: 2,
     })
   } catch {
-    const result = drawInvalid(canvas, BARCODE_INVALID_MESSAGE)
+    const result = drawInvalid(canvas, invalidMessage)
     cache.set(key, result)
     return result
   }

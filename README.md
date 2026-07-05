@@ -2,14 +2,11 @@
 
 React class component for editing a template for a 1-bit canvas-rendered label, plus a Node.js rasterizer that produces the final PNG.
 
+![Screenshot of the dev app](public/Screenshot.jpg)
+
 ```
-npm i github:sebseb7/react-canvas-label-editor#v10.0.0
+npm i github:sebseb7/react-canvas-label-editor#v11.0.0
 ```
-
-## Todo
-
-- Make all displayed text configurable via a props object.
-
 
 ## Usage
 
@@ -106,6 +103,33 @@ const muiComponents = {
 }
 
 // <CanvasEditor ... components={muiComponents} />
+```
+
+### Localizing / customizing displayed text
+
+All text `CanvasEditor` displays (toolbar buttons, panel headers/fields, hints, validation messages, etc.) is configurable via an optional `labels` prop, which defaults to English. You only need to supply the keys you want to override; anything you omit falls back to the built-in default:
+
+```jsx
+import { DEFAULT_LABELS } from 'react-canvas-label-editor'
+
+const germanLabels = {
+  toolbar: {
+    addTextbox: '+ Textfeld',
+    addBarcode: '+ Barcode',
+    addImage: '+ Bild',
+    height: (height) => `Höhe ${height}`,
+  },
+  panel: {
+    titles: { textbox: 'Textfeld', barcode: 'Barcode', png: 'Bild', default: 'Eigenschaften' },
+    paste: 'Einfügen',
+    copy: 'Kopie',
+    delete: 'Löschen',
+    hint: 'Klicke auf ein Objekt, um es zu bearbeiten, oder erstelle ein neues Objekt.',
+  },
+  // ... see DEFAULT_LABELS (also exported) for the full shape, e.g. textbox, barcode, png namespaces
+}
+
+// <CanvasEditor ... labels={germanLabels} />
 ```
 
 ## Serverside:

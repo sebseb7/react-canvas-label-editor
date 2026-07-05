@@ -22,6 +22,7 @@ import {
 } from './constants'
 import { createBarcode, createPng, createTextbox } from './types'
 import { DEFAULT_COMPONENTS } from './defaultComponents'
+import { DEFAULT_LABELS, mergeLabels } from './defaultLabels'
 import './CanvasEditor.css'
 
 export default class CanvasEditor extends Component {
@@ -61,10 +62,15 @@ export default class CanvasEditor extends Component {
     onCopy: null,
     clipboard: null,
     components: {},
+    labels: {},
   }
 
   getComponents() {
     return { ...DEFAULT_COMPONENTS, ...this.props.components }
+  }
+
+  getLabels() {
+    return mergeLabels(DEFAULT_LABELS, this.props.labels)
   }
 
   componentDidMount() {
@@ -312,7 +318,7 @@ export default class CanvasEditor extends Component {
   }
 
   drawBarcode(ctx, obj) {
-    const { canvas } = renderBarcode(obj)
+    const { canvas } = renderBarcode(obj, this.getLabels().barcode.invalidCode)
     ctx.drawImage(canvas, obj.x, obj.y)
   }
 
@@ -401,17 +407,24 @@ export default class CanvasEditor extends Component {
     const { width, minHeight, maxHeight } = this.props
     const height = this.canvasHeight()
     const components = this.getComponents()
+    const labels = this.getLabels()
     const { Button, Slider } = components
 
     return (
       <div className="canvas-editor">
         <div className="canvas-editor__toolbar">
-          <Button onClick={() => this.addObject(createTextbox)}>+ Textfeld</Button>
-          <Button onClick={() => this.addObject(createBarcode)}>+ Barcode</Button>
-          <Button onClick={() => this.addObject(createPng)}>+ Image</Button>
+          <Button
+            onClick={() =>
+              this.addObject(() => createTextbox({ text: labels.textbox.defaultText }))
+            }
+          >
+            {labels.toolbar.addTextbox}
+          </Button>
+          <Button onClick={() => this.addObject(createBarcode)}>{labels.toolbar.addBarcode}</Button>
+          <Button onClick={() => this.addObject(createPng)}>{labels.toolbar.addImage}</Button>
           <Slider
             className="canvas-editor__height"
-            label={`Höhe ${height}`}
+            label={labels.toolbar.height(height)}
             min={minHeight}
             max={maxHeight}
             value={height}
@@ -437,6 +450,7 @@ export default class CanvasEditor extends Component {
             clipboard={this.props.clipboard}
             onPaste={(clipboard) => this.pasteObject(clipboard)}
             components={components}
+            labels={labels}
           />
         </div>
       </div>
