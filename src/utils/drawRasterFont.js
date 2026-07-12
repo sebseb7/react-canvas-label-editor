@@ -68,14 +68,10 @@ function drawGlyphPixels(data, regionW, regionH, font, charCode, originX, origin
   }
 }
 
-function layoutRasterLines(text, rect, font) {
-  const trimmed = (text ?? '').trim()
-  if (!trimmed) return null
-
-  const words = trimmed.split(/\s+/).filter(Boolean)
+function wrapRasterWords(words, rect, font, startY) {
   const lines = []
   let line = ''
-  let y = 0
+  let y = startY
 
   for (const word of words) {
     if (word.length * font.width > rect.width) {
@@ -99,7 +95,32 @@ function layoutRasterLines(text, rect, font) {
     y += font.height
   }
 
-  if (y > rect.height) return null
+  return { lines, y }
+}
+
+function layoutRasterLines(text, rect, font) {
+  const normalized = (text ?? '').replace(/\r\n/g, '\n')
+  if (!normalized.trim()) return null
+
+  const paragraphs = normalized.split('\n')
+  const lines = []
+  let y = 0
+
+  for (const paragraph of paragraphs) {
+    const words = paragraph.split(/\s+/).filter(Boolean)
+    if (!words.length) {
+      lines.push({ text: '', y })
+      y += font.height
+      if (y > rect.height) return null
+      continue
+    }
+
+    const wrapped = wrapRasterWords(words, rect, font, y)
+    if (!wrapped) return null
+    lines.push(...wrapped.lines)
+    y = wrapped.y
+    if (y > rect.height) return null
+  }
 
   return { lines }
 }
