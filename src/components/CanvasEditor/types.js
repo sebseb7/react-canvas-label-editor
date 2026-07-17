@@ -1,4 +1,5 @@
 import { DEFAULT_TEXTBOX_FONT } from '../../utils/textboxFonts'
+import { createId } from '../../utils/createId'
 
 /**
  * @typedef {object} TextboxObject
@@ -13,6 +14,7 @@ import { DEFAULT_TEXTBOX_FONT } from '../../utils/textboxFonts'
  * @property {'top' | 'middle' | 'bottom'} [valign]
  * @property {boolean} [invert] White text on black background
  * @property {number} [cornerRadius] Rounded corners when inverted (px)
+ * @property {number} [rotation] Rotation in degrees (0 / 90 / 180 / 270)
  * @property {number} [marginLeft] Inner padding from left edge (px)
  * @property {number} [marginTop] Inner padding from top edge (px)
  * @property {number} [marginRight] Inner padding from right edge (px)
@@ -50,7 +52,7 @@ import { DEFAULT_TEXTBOX_FONT } from '../../utils/textboxFonts'
 
 export function createTextbox(overrides = {}) {
   return {
-    id: crypto.randomUUID(),
+    id: createId(),
     type: 'textbox',
     text: 'Sample text',
     font: DEFAULT_TEXTBOX_FONT,
@@ -61,6 +63,7 @@ export function createTextbox(overrides = {}) {
     valign: 'top',
     invert: false,
     cornerRadius: 0,
+    rotation: 0,
     marginLeft: 0,
     marginTop: 0,
     marginRight: 0,
@@ -75,7 +78,7 @@ export function createTextbox(overrides = {}) {
 
 export function createBarcode(overrides = {}) {
   return {
-    id: crypto.randomUUID(),
+    id: createId(),
     type: 'barcode',
     x: 40,
     y: 160,
@@ -89,7 +92,7 @@ export function createBarcode(overrides = {}) {
 
 export function createPng(overrides = {}) {
   return {
-    id: crypto.randomUUID(),
+    id: createId(),
     type: 'png',
     x: 280,
     y: 40,

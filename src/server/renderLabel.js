@@ -1,12 +1,7 @@
 import { createCanvas, ImageData } from 'canvas'
-import JsBarcode from 'jsbarcode'
 import { CANVAS_WIDTH } from '../components/CanvasEditor/constants.js'
 import { binarizeImageData, downsampleTo1Bit } from '../render/binarize.js'
-import {
-  barcodeTextFontOptions,
-  normalizeBarcodeCode,
-  resolveBarcodeFormat,
-} from '../utils/barcode.js'
+import { barcodeTextFontOptions, paintBarcodeOnCanvas } from '../utils/barcode.js'
 import { isRasterTextboxFont, resolveTextboxFont } from '../utils/textboxFonts.js'
 import { drawServerTextbox } from './drawTextbox.js'
 import { loadSourceImage } from './loadSourceImage.js'
@@ -15,27 +10,12 @@ import { LABEL_RENDER_SCALE } from './renderConstants.js'
 
 function drawBarcode(ctx, obj) {
   registerServerFonts()
-  const format = resolveBarcodeFormat(obj)
-  const code = normalizeBarcodeCode(obj.code, format)
   const canvas = createCanvas(1, 1)
-
-  try {
-    JsBarcode(canvas, code, {
-      format,
-      width: obj.scale,
-      height: obj.h,
-      displayValue: true,
-      ...barcodeTextFontOptions(SERVER_FONT_FAMILIES.outfit),
-      fontSize: Math.max(10, Math.round(obj.scale * 7)),
-      margin: 0,
-      background: '#ffffff',
-      lineColor: '#000000',
-      textMargin: 2,
-    })
-  } catch {
-    return
-  }
-
+  const result = paintBarcodeOnCanvas(canvas, obj, {
+    textFontOptions: barcodeTextFontOptions(SERVER_FONT_FAMILIES.outfit),
+    onInvalid: 'skip',
+  })
+  if (!result) return
   ctx.drawImage(canvas, obj.x, obj.y)
 }
 

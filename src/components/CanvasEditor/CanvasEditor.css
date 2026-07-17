@@ -118,6 +118,8 @@
   background: #fff;
   color: #0f172a;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .canvas-editor-btn:hover {
@@ -248,6 +250,10 @@
 
 .canvas-editor-field-row--quad {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.canvas-editor-field-row--triple {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .canvas-editor-field-row--disabled .canvas-editor-field span {

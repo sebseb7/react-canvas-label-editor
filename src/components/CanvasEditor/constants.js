@@ -3,3 +3,4 @@ export const CANVAS_HEIGHT_MIN = 80
 export const CANVAS_HEIGHT_MAX = 300
 export const CANVAS_HEIGHT_DEFAULT = 200
 export const PNG_SCALE_MIN = 0.01
+export const TEXTBOX_ROTATIONS = [0, 90, 180, 270]

@@ -8,6 +8,7 @@ import {
   TEXTBOX_FONT_WEIGHTS,
 } from './textboxFonts.js'
 import { drawTextboxInvertBackground, resolveTextboxStyle, textboxInnerRect } from './textboxStyle.js'
+import { withTextboxRotation } from './textboxRotation.js'
 
 function drawTtfTextbox(ctx, obj, style, options = {}) {
   const font = resolveTextboxFont(obj.font)
@@ -28,7 +29,8 @@ function drawTtfTextbox(ctx, obj, style, options = {}) {
   })
 }
 
-export function drawTextbox(ctx, obj, options = {}) {
+/** Draw textbox contents in local (unrotated) space. */
+export function drawTextboxContent(ctx, obj, options = {}) {
   const font = resolveTextboxFont(obj.font)
   const style = resolveTextboxStyle(obj, options)
   const outerRect = { x: obj.x, y: obj.y, width: obj.w, height: obj.h }
@@ -53,4 +55,10 @@ export function drawTextbox(ctx, obj, options = {}) {
   if (isTtfTextboxFont(font)) {
     drawTtfTextbox(ctx, obj, style, options)
   }
+}
+
+export function drawTextbox(ctx, obj, options = {}) {
+  withTextboxRotation(ctx, obj, () => {
+    drawTextboxContent(ctx, obj, options)
+  })
 }

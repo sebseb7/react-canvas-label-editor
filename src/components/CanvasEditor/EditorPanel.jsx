@@ -7,7 +7,8 @@ import {
   TEXTBOX_FONT_OPTIONS,
 } from '../../utils/textboxFonts'
 import { TEXTBOX_HALIGNS, TEXTBOX_VALIGNS } from '../../utils/textboxStyle'
-import { PNG_SCALE_MIN } from './constants'
+import { PNG_SCALE_MIN, TEXTBOX_ROTATIONS } from './constants'
+import { snapRotation } from './geometry'
 
 function imageSummary(src, labels) {
   if (!src?.trim()) return labels.png.noImage
@@ -28,6 +29,7 @@ const PLACEHOLDER = {
     valign: 'top',
     invert: false,
     cornerRadius: 0,
+    rotation: 0,
     marginLeft: 0,
     marginTop: 0,
     marginRight: 0,
@@ -140,7 +142,7 @@ function TextboxFields({ obj, onChange, components, labels }) {
           </select>
         </label>
       </FieldRow>
-      <FieldRow>
+      <FieldRow className="canvas-editor-field-row--triple">
         <label className="canvas-editor-field canvas-editor-field--checkbox">
           <span>{t.invertColors}</span>
           <input
@@ -165,6 +167,19 @@ function TextboxFields({ obj, onChange, components, labels }) {
             value={obj.cornerRadius ?? 0}
             onChange={(e) => set('cornerRadius', Math.max(0, Number(e.target.value)))}
           />
+        </label>
+        <label className="canvas-editor-field">
+          <span>{t.rotation}</span>
+          <select
+            value={snapRotation(obj.rotation ?? 0)}
+            onChange={(e) => set('rotation', Number(e.target.value))}
+          >
+            {TEXTBOX_ROTATIONS.map((deg) => (
+              <option key={deg} value={deg}>
+                {deg}°
+              </option>
+            ))}
+          </select>
         </label>
       </FieldRow>
       <FieldRow className="canvas-editor-field-row--quad">

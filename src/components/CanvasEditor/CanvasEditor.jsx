@@ -1,17 +1,23 @@
 import { Component, createRef } from 'react'
-import { drawTextbox as renderTextboxContent } from '../../utils/drawTextbox'
+import { drawTextboxContent } from '../../utils/drawTextbox'
 import { ensureEditorFontsLoaded } from '../../utils/textboxFonts'
 import { imageSrcForLoad } from '../../utils/imageSrc'
 import { oneBitCacheKey, render1BitCanvas } from '../../utils/image1bit'
 import { renderBarcode } from '../../utils/barcode'
 import EditorPanel from './EditorPanel'
 import {
+  clampObjectToCanvas,
   createResizeDrag,
-  findResizeHandleHit,
+  createRotateDrag,
+  findHandleHit,
   getObjectBounds,
+  getResizeHandleBounds,
+  getRotateHandleBounds,
   hitTest,
   resizePatchForObject,
-  RESIZE_HANDLE_SIZE,
+  rotationFromPointer,
+  ROTATE_HANDLE_SIZE,
+  withTextboxRotation,
 } from './geometry'
 import {
   CANVAS_HEIGHT_MAX,
@@ -21,6 +27,7 @@ import {
   PNG_SCALE_MIN,
 } from './constants'
 import { createBarcode, createPng, createTextbox } from './types'
+import { createId } from '../../utils/createId'
 import { DEFAULT_COMPONENTS } from './defaultComponents'
 import { DEFAULT_LABELS, mergeLabels } from './defaultLabels'
 import './CanvasEditor.css'
@@ -30,6 +37,9 @@ export default class CanvasEditor extends Component {
   imageCache = new Map()
   oneBitCache = new Map()
   fittedPngKeys = new Set()
+  touchMoveBound = false
+  /** Synchronous drag pointer so touchmove works before setState flushes. */
+  activeDrag = null
 
   state = {
     selectedId: null,
@@ -77,7 +87,6 @@ export default class CanvasEditor extends Component {
     ensureEditorFontsLoaded().then(() => this.redraw())
     window.addEventListener('mousemove', this.onWindowMouseMove)
     window.addEventListener('mouseup', this.onWindowMouseUp)
-    window.addEventListener('touchmove', this.onWindowMouseMove, { passive: false })
     window.addEventListener('touchend', this.onWindowMouseUp)
     window.addEventListener('touchcancel', this.onWindowMouseUp)
   }
@@ -97,18 +106,30 @@ export default class CanvasEditor extends Component {
       prevProps.objects !== this.props.objects ||
       prevProps.height !== this.props.height ||
       prevState.internalHeight !== this.state.internalHeight ||
-      prevState.selectedId !== this.state.selectedId
+      prevState.selectedId !== this.state.selectedId ||
+      prevState.drag !== this.state.drag
     ) {
       this.redraw()
     }
   }
 
   componentWillUnmount() {
+    this.syncTouchMoveListener(false)
     window.removeEventListener('mousemove', this.onWindowMouseMove)
     window.removeEventListener('mouseup', this.onWindowMouseUp)
-    window.removeEventListener('touchmove', this.onWindowMouseMove)
     window.removeEventListener('touchend', this.onWindowMouseUp)
     window.removeEventListener('touchcancel', this.onWindowMouseUp)
+  }
+
+  /** Only listen for non-passive touchmove while dragging (avoids blocking taps on Android). */
+  syncTouchMoveListener(active) {
+    if (active && !this.touchMoveBound) {
+      window.addEventListener('touchmove', this.onWindowMouseMove, { passive: false })
+      this.touchMoveBound = true
+    } else if (!active && this.touchMoveBound) {
+      window.removeEventListener('touchmove', this.onWindowMouseMove)
+      this.touchMoveBound = false
+    }
   }
 
   getSelected() {
@@ -143,19 +164,29 @@ export default class CanvasEditor extends Component {
   }
 
   addObject(factory) {
-    const obj = factory()
+    const obj = clampObjectToCanvas(
+      factory(),
+      this.props.width,
+      this.canvasHeight(),
+      this.imageCache,
+    )
     this.updateObjects([...this.props.objects, obj])
     this.setState({ selectedId: obj.id })
   }
 
   pasteObject(clipboard) {
     if (!clipboard) return
-    const obj = {
-      ...clipboard,
-      id: crypto.randomUUID(),
-      x: (clipboard.x ?? 0) + 20,
-      y: (clipboard.y ?? 0) + 20,
-    }
+    const obj = clampObjectToCanvas(
+      {
+        ...clipboard,
+        id: createId(),
+        x: (clipboard.x ?? 0) + 20,
+        y: (clipboard.y ?? 0) + 20,
+      },
+      this.props.width,
+      this.canvasHeight(),
+      this.imageCache,
+    )
     this.updateObjects([...this.props.objects, obj])
     this.setState({ selectedId: obj.id })
   }
@@ -172,20 +203,28 @@ export default class CanvasEditor extends Component {
     }
   }
 
+  setDrag(drag) {
+    this.activeDrag = drag
+    this.syncTouchMoveListener(Boolean(drag))
+    this.setState({ drag })
+  }
+
   onCanvasMouseDown = (event) => {
     if (event.touches) event.preventDefault()
     const { x, y } = this.canvasPoint(event)
     const { objects } = this.props
     const { selectedId } = this.state
 
-    const resizeId = findResizeHandleHit(objects, x, y, this.imageCache, selectedId)
-    if (resizeId) {
-      const obj = objects.find((o) => o.id === resizeId)
-      this.bringToFront(resizeId)
-      this.setState({
-        selectedId: resizeId,
-        drag: createResizeDrag(obj, this.imageCache, x, y),
-      })
+    const handleHit = findHandleHit(objects, x, y, this.imageCache, selectedId)
+    if (handleHit) {
+      const obj = objects.find((o) => o.id === handleHit.id)
+      this.bringToFront(handleHit.id)
+      this.setState({ selectedId: handleHit.id })
+      this.setDrag(
+        handleHit.mode === 'rotate'
+          ? createRotateDrag(obj)
+          : createResizeDrag(obj, this.imageCache, x, y),
+      )
       return
     }
 
@@ -193,42 +232,55 @@ export default class CanvasEditor extends Component {
     if (hitId) {
       const obj = objects.find((o) => o.id === hitId)
       this.bringToFront(hitId)
-      this.setState({
-        selectedId: hitId,
-        drag: {
-          mode: 'move',
-          id: hitId,
-          startX: x,
-          startY: y,
-          origX: obj.x,
-          origY: obj.y,
-        },
+      this.setState({ selectedId: hitId })
+      this.setDrag({
+        mode: 'move',
+        id: hitId,
+        startX: x,
+        startY: y,
+        origX: obj.x,
+        origY: obj.y,
       })
       return
     }
 
+    this.setDrag(null)
     this.setState({ selectedId: null })
   }
 
   onCanvasMouseMove = (event) => {
-    if (this.state.drag) return
+    if (this.activeDrag || this.state.drag) return
     const canvas = this.canvasRef.current
     const { x, y } = this.canvasPoint(event)
-    const resizeId = findResizeHandleHit(
+    const handleHit = findHandleHit(
       this.props.objects,
       x,
       y,
       this.imageCache,
       this.state.selectedId,
     )
-    canvas.style.cursor = resizeId ? 'nwse-resize' : 'default'
+    if (handleHit?.mode === 'rotate') {
+      canvas.style.cursor = 'grab'
+    } else if (handleHit?.mode === 'resize') {
+      canvas.style.cursor = 'nwse-resize'
+    } else {
+      canvas.style.cursor = 'default'
+    }
   }
 
   onWindowMouseMove = (event) => {
-    const { drag } = this.state
+    const drag = this.activeDrag
     if (!drag) return
     if (event.touches) event.preventDefault()
     const { x, y } = this.canvasPoint(event)
+
+    if (drag.mode === 'rotate') {
+      this.updateObject(drag.id, {
+        rotation: rotationFromPointer(drag.cx, drag.cy, x, y),
+      })
+      return
+    }
+
     const dx = x - drag.startX
     const dy = y - drag.startY
 
@@ -247,8 +299,8 @@ export default class CanvasEditor extends Component {
   }
 
   onWindowMouseUp = () => {
-    if (this.state.drag) {
-      this.setState({ drag: null })
+    if (this.activeDrag || this.state.drag) {
+      this.setDrag(null)
     }
   }
 
@@ -277,25 +329,56 @@ export default class CanvasEditor extends Component {
     }
 
     if (selected) {
-        const bounds = getObjectBounds(selected, this.imageCache)
-        if (bounds) {
-          ctx.save()
+      const bounds = getObjectBounds(selected, this.imageCache)
+      if (bounds) {
+        const drawChrome = () => {
           ctx.strokeStyle = '#2563eb'
           ctx.lineWidth = 2
           ctx.setLineDash([])
           ctx.strokeRect(bounds.x - 2, bounds.y - 2, bounds.w + 4, bounds.h + 4)
 
-          const hx = bounds.x + bounds.w
-          const hy = bounds.y + bounds.h
-          const hs = RESIZE_HANDLE_SIZE / 2
-          ctx.fillStyle = '#2563eb'
-          ctx.fillRect(hx - hs, hy - hs, RESIZE_HANDLE_SIZE, RESIZE_HANDLE_SIZE)
-          ctx.strokeStyle = '#ffffff'
-          ctx.lineWidth = 1
-          ctx.strokeRect(hx - hs, hy - hs, RESIZE_HANDLE_SIZE, RESIZE_HANDLE_SIZE)
+          const resize = getResizeHandleBounds(selected, this.imageCache)
+          if (resize) {
+            ctx.fillStyle = '#2563eb'
+            ctx.fillRect(resize.x, resize.y, resize.w, resize.h)
+            ctx.strokeStyle = '#ffffff'
+            ctx.lineWidth = 1
+            ctx.strokeRect(resize.x, resize.y, resize.w, resize.h)
+          }
 
-          ctx.restore()
+          if (selected.type === 'textbox') {
+            const rotate = getRotateHandleBounds(selected)
+            if (rotate) {
+              const stemX = bounds.x + bounds.w / 2
+              const stemTop = bounds.y
+              const handleCx = rotate.x + rotate.w / 2
+              const handleCy = rotate.y + rotate.h / 2
+              ctx.beginPath()
+              ctx.moveTo(stemX, stemTop)
+              ctx.lineTo(handleCx, handleCy)
+              ctx.strokeStyle = '#2563eb'
+              ctx.lineWidth = 1.5
+              ctx.stroke()
+
+              ctx.beginPath()
+              ctx.arc(handleCx, handleCy, ROTATE_HANDLE_SIZE / 2, 0, Math.PI * 2)
+              ctx.fillStyle = '#2563eb'
+              ctx.fill()
+              ctx.strokeStyle = '#ffffff'
+              ctx.lineWidth = 1
+              ctx.stroke()
+            }
+          }
         }
+
+        ctx.save()
+        if (selected.type === 'textbox') {
+          withTextboxRotation(ctx, selected, drawChrome)
+        } else {
+          drawChrome()
+        }
+        ctx.restore()
+      }
     }
   }
 
@@ -316,14 +399,14 @@ export default class CanvasEditor extends Component {
   }
 
   drawTextbox(ctx, obj) {
-    ctx.save()
-    ctx.strokeStyle = '#94a3b8'
-    ctx.lineWidth = 1
-    ctx.setLineDash([4, 4])
-    ctx.strokeRect(obj.x, obj.y, obj.w, obj.h)
-    ctx.setLineDash([])
-    renderTextboxContent(ctx, obj, { fillStyle: '#0f172a' })
-    ctx.restore()
+    withTextboxRotation(ctx, obj, () => {
+      ctx.strokeStyle = '#94a3b8'
+      ctx.lineWidth = 1
+      ctx.setLineDash([4, 4])
+      ctx.strokeRect(obj.x, obj.y, obj.w, obj.h)
+      ctx.setLineDash([])
+      drawTextboxContent(ctx, obj, { fillStyle: '#0f172a' })
+    })
   }
 
   drawBarcode(ctx, obj) {

@@ -31,6 +31,7 @@ export const DEFAULT_LABELS = {
     vertical: 'Vertical',
     invertColors: 'Invert colors',
     cornerRadius: 'Corner radius',
+    rotation: 'Rotation',
     x: 'X',
     y: 'Y',
     width: 'Width',

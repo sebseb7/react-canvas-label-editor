@@ -7,6 +7,10 @@ const cache = new Map()
 
 export const BARCODE_INVALID_MESSAGE = 'Invalid barcode'
 
+const EAN13_SIDE_MODULES = 3
+const EAN13_MIDDLE_MODULES = 5
+const EAN13_LEFT_DIGIT_MODULES = 6 * 7
+
 /** JsBarcode `font` / `fontOptions` for the human-readable EAN digits. */
 export function barcodeTextFontOptions(serverFamily) {
   const family = serverFamily ?? `"${TEXTBOX_FONT_FAMILIES.outfit}"`
@@ -33,12 +37,28 @@ export function resolveBarcodeFormat(obj) {
   return detectBarcodeFormat(obj.code)
 }
 
+/** EAN-13 check digit for the first 12 digits (same formula JsBarcode uses). */
+export function ean13Checksum(digits12) {
+  const sum = digits12
+    .slice(0, 12)
+    .split('')
+    .reduce((acc, digit, index) => acc + Number(digit) * (index % 2 === 0 ? 1 : 3), 0)
+  return String((10 - (sum % 10)) % 10)
+}
+
 export function normalizeBarcodeCode(code, format) {
   const digits = code.replace(/\D/g, '')
   if (format === 'EAN8') {
     return digits.length >= 8 ? digits.slice(0, 8) : digits.padStart(7, '0').slice(-7)
   }
-  return digits.length >= 13 ? digits.slice(0, 13) : digits.padStart(12, '0').slice(-12)
+  // Always include the check digit so the caption matches the encoded bars.
+  if (digits.length >= 13) return digits.slice(0, 13)
+  const body = digits.padStart(12, '0').slice(-12)
+  return body + ean13Checksum(body)
+}
+
+function barcodeFontSize(obj) {
+  return Math.max(10, Math.round(obj.scale * 7))
 }
 
 function barcodeCacheKey(obj, invalidMessage) {
@@ -60,43 +80,103 @@ function drawInvalid(canvas, message = BARCODE_INVALID_MESSAGE) {
   return { canvas, width: canvas.width, height: canvas.height }
 }
 
-export function renderBarcode(obj, invalidMessage = BARCODE_INVALID_MESSAGE) {
-  const key = barcodeCacheKey(obj, invalidMessage)
-  const cached = cache.get(key)
-  if (cached) return cached
+/**
+ * EAN-13 normally paints the first digit to the left of the bars. We keep the
+ * guarded bar layout (tall start/middle/end markers) and draw all 13 digits
+ * under the left/right halves instead.
+ *
+ * JsBarcode calls ctx.save() before resizing the canvas, which leaves a stale
+ * clip on node-canvas (and can block further drawing). Re-assigning width/height
+ * clears that graphics state before we paint the caption.
+ */
+function drawEan13Caption(canvas, code, obj, textFontOptions, fontSize, textMargin) {
+  const width = canvas.width
+  const height = canvas.height
+  const bars = canvas.getContext('2d').getImageData(0, 0, width, height)
+  canvas.width = width
+  canvas.height = height
 
+  const ctx = canvas.getContext('2d')
+  ctx.putImageData(bars, 0, 0)
+
+  const moduleWidth = obj.scale
+  const leftCenter =
+    (EAN13_SIDE_MODULES + EAN13_LEFT_DIGIT_MODULES / 2) * moduleWidth
+  const rightCenter =
+    (EAN13_SIDE_MODULES +
+      EAN13_LEFT_DIGIT_MODULES +
+      EAN13_MIDDLE_MODULES +
+      EAN13_LEFT_DIGIT_MODULES / 2) *
+    moduleWidth
+  const y = obj.h + textMargin + fontSize
+
+  const weight = textFontOptions.fontOptions ? `${textFontOptions.fontOptions} ` : ''
+  ctx.fillStyle = '#000000'
+  ctx.font = `${weight}${fontSize}px ${textFontOptions.font}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'alphabetic'
+  ctx.fillText(code.slice(0, 7), leftCenter, y)
+  ctx.fillText(code.slice(7), rightCenter, y)
+}
+
+/**
+ * Paint a barcode onto an existing canvas (browser or node-canvas).
+ * @returns {{ canvas: *, width: number, height: number } | null}
+ */
+export function paintBarcodeOnCanvas(canvas, obj, {
+  invalidMessage = BARCODE_INVALID_MESSAGE,
+  textFontOptions = barcodeTextFontOptions(),
+  onInvalid = 'draw',
+} = {}) {
   const format = resolveBarcodeFormat(obj)
   const validationError = getBarcodeValidationError(obj.code, invalidMessage)
-  const canvas = document.createElement('canvas')
 
   if (validationError) {
-    const result = drawInvalid(canvas, validationError)
-    cache.set(key, result)
-    return result
+    if (onInvalid === 'skip') return null
+    return drawInvalid(canvas, validationError)
   }
 
   const code = normalizeBarcodeCode(obj.code, format)
+  const fontSize = barcodeFontSize(obj)
+  const textMargin = 2
+  // EAN-13: hide built-in text (first digit is drawn left of the bars) and
+  // reserve bottom space so we can place all digits under the guarded layout.
+  const customEan13Text = format === 'EAN13'
 
   try {
     JsBarcode(canvas, code, {
       format,
       width: obj.scale,
       height: obj.h,
-      displayValue: true,
-      ...barcodeTextFontOptions(),
-      fontSize: Math.max(10, Math.round(obj.scale * 7)),
+      displayValue: !customEan13Text,
+      ...textFontOptions,
+      fontSize,
       margin: 0,
+      // Guard bars already extend by ~fontSize/2; this makes room for the caption.
+      marginBottom: customEan13Text ? Math.ceil(fontSize / 2) : 0,
       background: '#ffffff',
       lineColor: '#000000',
-      textMargin: 2,
+      textMargin,
     })
   } catch {
-    const result = drawInvalid(canvas, invalidMessage)
-    cache.set(key, result)
-    return result
+    if (onInvalid === 'skip') return null
+    return drawInvalid(canvas, invalidMessage)
   }
 
-  const result = { canvas, width: canvas.width, height: canvas.height }
+  if (customEan13Text) {
+    drawEan13Caption(canvas, code, obj, textFontOptions, fontSize, textMargin)
+  }
+
+  return { canvas, width: canvas.width, height: canvas.height }
+}
+
+export function renderBarcode(obj, invalidMessage = BARCODE_INVALID_MESSAGE) {
+  const key = barcodeCacheKey(obj, invalidMessage)
+  const cached = cache.get(key)
+  if (cached) return cached
+
+  const canvas = document.createElement('canvas')
+  const result = paintBarcodeOnCanvas(canvas, obj, { invalidMessage })
   cache.set(key, result)
   return result
 }
