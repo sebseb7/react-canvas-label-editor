@@ -145,11 +145,13 @@ function TextboxFields({ obj, onChange, components, labels }) {
       <FieldRow className="canvas-editor-field-row--triple">
         <label className="canvas-editor-field canvas-editor-field--checkbox">
           <span>{t.invertColors}</span>
-          <input
-            type="checkbox"
-            checked={invert}
-            onChange={(e) => set('invert', e.target.checked)}
-          />
+          <span className="canvas-editor-field__control">
+            <input
+              type="checkbox"
+              checked={invert}
+              onChange={(e) => set('invert', e.target.checked)}
+            />
+          </span>
         </label>
         <label
           className={[
@@ -171,11 +173,15 @@ function TextboxFields({ obj, onChange, components, labels }) {
         <label className="canvas-editor-field">
           <span>{t.rotation}</span>
           <select
-            value={snapRotation(obj.rotation ?? 0)}
-            onChange={(e) => set('rotation', Number(e.target.value))}
+            value={String(snapRotation(obj.rotation ?? 0))}
+            onChange={(e) => {
+              const next = Number(e.target.value)
+              if (snapRotation(obj.rotation ?? 0) === next) return
+              set('rotation', next)
+            }}
           >
             {TEXTBOX_ROTATIONS.map((deg) => (
-              <option key={deg} value={deg}>
+              <option key={deg} value={String(deg)}>
                 {deg}°
               </option>
             ))}

@@ -282,10 +282,18 @@
   justify-content: flex-start;
 }
 
+.canvas-editor-field__control {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  /* Match height of text/select controls (font + padding + border) */
+  min-height: calc(0.875rem * 1.25 + 0.6rem + 2px);
+}
+
 .canvas-editor-field--checkbox input[type='checkbox'] {
   width: auto;
+  height: auto;
   margin: 0;
-  align-self: flex-start;
 }
 
 .canvas-editor-field {

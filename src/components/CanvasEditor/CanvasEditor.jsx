@@ -141,6 +141,12 @@ export default class CanvasEditor extends Component {
   }
 
   updateObject(id, patch) {
+    const current = this.props.objects.find((o) => o.id === id)
+    if (!current) return
+    // Skip no-op patches (rotate-drag often repeats the same 90° snap).
+    if (Object.keys(patch).every((key) => Object.is(current[key], patch[key]))) {
+      return
+    }
     this.updateObjects(
       this.props.objects.map((o) => (o.id === id ? { ...o, ...patch } : o)),
     )
@@ -479,7 +485,8 @@ export default class CanvasEditor extends Component {
     const newScale = Math.max(PNG_SCALE_MIN, Math.round(fitScale * 1000) / 1000)
     this.fittedPngKeys.add(fitKey)
     if (newScale < obj.scale) {
-      this.updateObject(obj.id, { scale: newScale })
+      // Defer out of componentDidUpdate → redraw to avoid nested updates.
+      queueMicrotask(() => this.updateObject(obj.id, { scale: newScale }))
     }
   }
 
