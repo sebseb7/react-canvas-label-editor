@@ -34,7 +34,7 @@ import { createId } from '../../utils/createId'
  * @property {number} h
  * @property {number} scale Module width (integer bar width in px)
  * @property {string} code
- * @property {'EAN8' | 'EAN13'} [format] Barcode symbology; auto-detected from code length if omitted
+ * @property {'EAN8' | 'EAN13' | 'CODE128' | 'QR'} [format] Barcode symbology; auto-detected from code length if omitted
  */
 
 /**

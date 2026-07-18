@@ -205,6 +205,14 @@ export function resizePatchForObject(obj, drag, dx, dy) {
       }
     }
     case 'barcode': {
+      if (obj.format === 'QR') {
+        const newW = Math.max(1, drag.origBoundsW + dx)
+        const newH = Math.max(1, drag.origBoundsH + dy)
+        const factor = Math.max(newW / drag.origBoundsW, newH / drag.origBoundsH)
+        return {
+          scale: Math.max(1, Math.round(drag.origScale * factor)),
+        }
+      }
       const newW = Math.max(40, drag.origBoundsW + dx)
       const newH = Math.max(20, drag.origBoundsH + dy)
       return {

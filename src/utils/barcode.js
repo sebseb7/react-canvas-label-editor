@@ -1,15 +1,18 @@
 import JsBarcode from 'jsbarcode'
+import QRCode from 'qrcode'
 import { TEXTBOX_FONT_FAMILIES, TEXTBOX_FONT_WEIGHTS } from './textboxFonts.js'
 
 const cache = new Map()
 
-/** @typedef {'EAN8' | 'EAN13'} BarcodeFormat */
+/** @typedef {'EAN8' | 'EAN13' | 'CODE128' | 'QR'} BarcodeFormat */
 
 export const BARCODE_INVALID_MESSAGE = 'Invalid barcode'
 
 const EAN13_SIDE_MODULES = 3
 const EAN13_MIDDLE_MODULES = 5
 const EAN13_LEFT_DIGIT_MODULES = 6 * 7
+
+const FREEFORM_FORMATS = new Set(['CODE128', 'QR'])
 
 /** JsBarcode `font` / `fontOptions` for the human-readable EAN digits. */
 export function barcodeTextFontOptions(serverFamily) {
@@ -20,9 +23,11 @@ export function barcodeTextFontOptions(serverFamily) {
   }
 }
 
-export function getBarcodeValidationError(code, message = BARCODE_INVALID_MESSAGE) {
+export function getBarcodeValidationError(code, message = BARCODE_INVALID_MESSAGE, format) {
   const trimmed = String(code ?? '').trim()
   if (!trimmed) return null
+  // Code 128 / QR accept free text; EAN formats are digits only.
+  if (FREEFORM_FORMATS.has(format)) return null
   if (/\D/.test(trimmed)) return message
   return null
 }
@@ -33,7 +38,14 @@ export function detectBarcodeFormat(code) {
 }
 
 export function resolveBarcodeFormat(obj) {
-  if (obj.format === 'EAN8' || obj.format === 'EAN13') return obj.format
+  if (
+    obj.format === 'EAN8' ||
+    obj.format === 'EAN13' ||
+    obj.format === 'CODE128' ||
+    obj.format === 'QR'
+  ) {
+    return obj.format
+  }
   return detectBarcodeFormat(obj.code)
 }
 
@@ -47,6 +59,7 @@ export function ean13Checksum(digits12) {
 }
 
 export function normalizeBarcodeCode(code, format) {
+  if (FREEFORM_FORMATS.has(format)) return String(code ?? '').trim()
   const digits = code.replace(/\D/g, '')
   if (format === 'EAN8') {
     return digits.length >= 8 ? digits.slice(0, 8) : digits.padStart(7, '0').slice(-7)
@@ -119,6 +132,26 @@ function drawEan13Caption(canvas, code, obj, textFontOptions, fontSize, textMarg
   ctx.fillText(code.slice(7), rightCenter, y)
 }
 
+function paintQrOnCanvas(canvas, code, moduleWidth) {
+  const qr = QRCode.create(code, { errorCorrectionLevel: 'M' })
+  const modules = qr.modules.size
+  const dim = Math.max(1, modules * Math.max(1, Math.round(moduleWidth)))
+  const cell = dim / modules
+  canvas.width = dim
+  canvas.height = dim
+  const ctx = canvas.getContext('2d')
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, dim, dim)
+  ctx.fillStyle = '#000000'
+  for (let row = 0; row < modules; row++) {
+    for (let col = 0; col < modules; col++) {
+      if (!qr.modules.get(row, col)) continue
+      ctx.fillRect(Math.floor(col * cell), Math.floor(row * cell), Math.ceil(cell), Math.ceil(cell))
+    }
+  }
+  return { canvas, width: dim, height: dim }
+}
+
 /**
  * Paint a barcode onto an existing canvas (browser or node-canvas).
  * @returns {{ canvas: *, width: number, height: number } | null}
@@ -129,7 +162,7 @@ export function paintBarcodeOnCanvas(canvas, obj, {
   onInvalid = 'draw',
 } = {}) {
   const format = resolveBarcodeFormat(obj)
-  const validationError = getBarcodeValidationError(obj.code, invalidMessage)
+  const validationError = getBarcodeValidationError(obj.code, invalidMessage, format)
 
   if (validationError) {
     if (onInvalid === 'skip') return null
@@ -137,6 +170,16 @@ export function paintBarcodeOnCanvas(canvas, obj, {
   }
 
   const code = normalizeBarcodeCode(obj.code, format)
+
+  if (format === 'QR') {
+    try {
+      return paintQrOnCanvas(canvas, code, obj.scale)
+    } catch {
+      if (onInvalid === 'skip') return null
+      return drawInvalid(canvas, invalidMessage)
+    }
+  }
+
   const fontSize = barcodeFontSize(obj)
   const textMargin = 2
   // EAN-13: hide built-in text (first digit is drawn left of the bars) and

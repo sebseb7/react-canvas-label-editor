@@ -244,7 +244,7 @@ function BarcodeFields({ obj, onChange, components, labels }) {
   const { TextField } = components
   const t = labels.barcode
   const set = (field, value) => onChange(field, value)
-  const codeError = getBarcodeValidationError(obj.code, t.invalidCode)
+  const codeError = getBarcodeValidationError(obj.code, t.invalidCode, obj.format || 'EAN13')
 
   return (
     <>
@@ -253,6 +253,8 @@ function BarcodeFields({ obj, onChange, components, labels }) {
         <select value={obj.format || 'EAN13'} onChange={(e) => set('format', e.target.value)}>
           <option value="EAN13">EAN-13</option>
           <option value="EAN8">EAN-8</option>
+          <option value="CODE128">Code 128</option>
+          <option value="QR">QR</option>
         </select>
       </label>
       <TextField label={t.code} value={obj.code} onChange={(value) => set('code', value)} />
@@ -265,13 +267,15 @@ function BarcodeFields({ obj, onChange, components, labels }) {
         <TextField label={t.x} type="number" value={obj.x} onChange={(value) => set('x', value)} />
         <TextField label={t.y} type="number" value={obj.y} onChange={(value) => set('y', value)} />
       </FieldRow>
-      <TextField
-        label={t.barHeight}
-        type="number"
-        min={1}
-        value={obj.h}
-        onChange={(value) => set('h', value)}
-      />
+      {obj.format === 'QR' ? null : (
+        <TextField
+          label={t.barHeight}
+          type="number"
+          min={1}
+          value={obj.h}
+          onChange={(value) => set('h', value)}
+        />
+      )}
       <TextField
         label={t.moduleWidth}
         type="number"
