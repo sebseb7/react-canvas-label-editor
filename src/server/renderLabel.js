@@ -13,7 +13,6 @@ function drawBarcode(ctx, obj) {
   const canvas = createCanvas(1, 1)
   const result = paintBarcodeOnCanvas(canvas, obj, {
     textFontOptions: barcodeTextFontOptions(SERVER_FONT_FAMILIES.outfit),
-    onInvalid: 'skip',
   })
   if (!result) return
   ctx.drawImage(canvas, obj.x, obj.y)

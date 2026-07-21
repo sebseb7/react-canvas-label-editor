@@ -79,18 +79,65 @@ function barcodeCacheKey(obj, invalidMessage) {
   return `${format}|${obj.code}|${obj.scale}|${obj.h}|${invalidMessage}`
 }
 
-function drawInvalid(canvas, message = BARCODE_INVALID_MESSAGE) {
-  canvas.width = 140
-  canvas.height = 48
+function drawInvalid(canvas, message = BARCODE_INVALID_MESSAGE, obj = {}) {
+  const moduleWidth = Math.max(1, Math.round(obj.scale ?? 2))
+  const barH = Math.max(24, Math.round(obj.h ?? 60))
+  const format = obj.format === 'QR' || obj.format === 'EAN8' || obj.format === 'EAN13' || obj.format === 'CODE128'
+    ? obj.format
+    : 'EAN13'
+
+  let width
+  let height
+  if (format === 'QR') {
+    const size = Math.max(96, moduleWidth * 25)
+    width = size
+    height = size
+  } else {
+    // Match a typical symbol footprint so the error replaces the missing barcode.
+    const modules = format === 'EAN8' ? 67 : format === 'CODE128' ? 90 : 95
+    width = Math.max(180, modules * moduleWidth)
+    height = Math.max(56, barH + barcodeFontSize(obj) + 12)
+  }
+
+  canvas.width = width
+  canvas.height = height
   const ctx = canvas.getContext('2d')
-  ctx.fillStyle = '#fee2e2'
-  ctx.fillRect(0, 0, canvas.width, canvas.height)
-  ctx.strokeStyle = '#fca5a5'
-  ctx.strokeRect(0, 0, canvas.width, canvas.height)
-  ctx.fillStyle = '#991b1b'
-  ctx.font = '11px sans-serif'
-  ctx.fillText(message, 8, 28)
-  return { canvas, width: canvas.width, height: canvas.height }
+  // High-contrast black/white so the message survives 1-bit label rendering.
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, width, height)
+  const border = Math.max(2, Math.round(moduleWidth))
+  ctx.strokeStyle = '#000000'
+  ctx.lineWidth = border
+  ctx.strokeRect(border / 2, border / 2, width - border, height - border)
+
+  const fontSize = Math.max(16, Math.min(32, Math.round(Math.min(width / 8, height / 2.5))))
+  ctx.fillStyle = '#000000'
+  ctx.font = `bold ${fontSize}px sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+
+  const maxTextWidth = width - border * 2 - 16
+  const words = String(message).split(/\s+/)
+  const lines = []
+  let line = ''
+  for (const word of words) {
+    const next = line ? `${line} ${word}` : word
+    if (line && ctx.measureText(next).width > maxTextWidth) {
+      lines.push(line)
+      line = word
+    } else {
+      line = next
+    }
+  }
+  if (line) lines.push(line)
+
+  const lineHeight = Math.round(fontSize * 1.2)
+  const startY = height / 2 - ((lines.length - 1) * lineHeight) / 2
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], width / 2, startY + i * lineHeight)
+  }
+
+  return { canvas, width, height }
 }
 
 /**
@@ -166,7 +213,7 @@ export function paintBarcodeOnCanvas(canvas, obj, {
 
   if (validationError) {
     if (onInvalid === 'skip') return null
-    return drawInvalid(canvas, validationError)
+    return drawInvalid(canvas, validationError, obj)
   }
 
   const code = normalizeBarcodeCode(obj.code, format)
@@ -176,7 +223,7 @@ export function paintBarcodeOnCanvas(canvas, obj, {
       return paintQrOnCanvas(canvas, code, obj.scale)
     } catch {
       if (onInvalid === 'skip') return null
-      return drawInvalid(canvas, invalidMessage)
+      return drawInvalid(canvas, invalidMessage, obj)
     }
   }
 
@@ -203,7 +250,7 @@ export function paintBarcodeOnCanvas(canvas, obj, {
     })
   } catch {
     if (onInvalid === 'skip') return null
-    return drawInvalid(canvas, invalidMessage)
+    return drawInvalid(canvas, invalidMessage, obj)
   }
 
   if (customEan13Text) {
