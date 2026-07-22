@@ -143,7 +143,8 @@ function drawInvalid(canvas, message = BARCODE_INVALID_MESSAGE, obj = {}) {
 /**
  * EAN-13 normally paints the first digit to the left of the bars. We keep the
  * guarded bar layout (tall start/middle/end markers) and draw all 13 digits
- * under the left/right halves instead.
+ * under the left/right halves instead, with a small gap after the first digit
+ * and before the check digit.
  *
  * JsBarcode calls ctx.save() before resizing the canvas, which leaves a stale
  * clip on node-canvas (and can block further drawing). Re-assigning width/height
@@ -175,8 +176,11 @@ function drawEan13Caption(canvas, code, obj, textFontOptions, fontSize, textMarg
   ctx.font = `${weight}${fontSize}px ${textFontOptions.font}`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'alphabetic'
-  ctx.fillText(code.slice(0, 7), leftCenter, y)
-  ctx.fillText(code.slice(7), rightCenter, y)
+  // Keep first digit under the bars; gap separates it from the left 6 and
+  // separates the check digit from the right 5.
+  const gap = '  '
+  ctx.fillText(`${code[0]}${gap}${code.slice(1, 7)}`, leftCenter, y)
+  ctx.fillText(`${code.slice(7, 12)}${gap}${code[12]}`, rightCenter, y)
 }
 
 function paintQrOnCanvas(canvas, code, moduleWidth) {

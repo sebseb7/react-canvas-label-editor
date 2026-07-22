@@ -58,6 +58,7 @@ export function DefaultTextField({
           rows={rows}
           disabled={disabled}
           placeholder={placeholder}
+          spellCheck={false}
           onChange={handleChange}
         />
       ) : (
@@ -69,6 +70,7 @@ export function DefaultTextField({
           step={step}
           disabled={disabled}
           placeholder={placeholder}
+          spellCheck={false}
           onChange={handleChange}
         />
       )}

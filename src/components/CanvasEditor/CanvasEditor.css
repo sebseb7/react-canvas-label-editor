@@ -149,19 +149,34 @@
   margin: 0;
   font-size: 0.75rem;
   color: #64748b;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.35;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
 }
 
 .canvas-editor-field-row--info {
-  align-items: center;
-  grid-template-columns: 1fr auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   gap: 0.5rem;
+  grid-template-columns: unset;
 }
 
-.canvas-editor-field-row--info .canvas-editor-panel__image-info {
+.canvas-editor-panel__image-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.canvas-editor-panel__image-actions .canvas-editor-btn {
+  flex: 1 1 0;
   min-width: 0;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.8125rem;
+  white-space: nowrap;
 }
 
 .canvas-editor-modal-overlay {

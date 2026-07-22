@@ -90,3 +90,38 @@ export function imageSrcSummary(src) {
   const bytes = format === 'svg' ? trimmed.length : trimmed.length
   return `${format.toUpperCase()} (${bytes} chars)`
 }
+
+/** Byte length of a stored image payload (data URL, raw base64, or SVG text). */
+export function imagePayloadByteLength(src) {
+  if (!src?.trim()) return 0
+  const trimmed = src.trim()
+  if (trimmed.startsWith('data:')) {
+    const comma = trimmed.indexOf(',')
+    if (comma === -1) return 0
+    const meta = trimmed.slice(0, comma)
+    const payload = trimmed.slice(comma + 1)
+    if (meta.includes(';base64')) {
+      try {
+        return atob(payload).length
+      } catch {
+        const padding = payload.endsWith('==') ? 2 : payload.endsWith('=') ? 1 : 0
+        return Math.max(0, Math.floor((payload.length * 3) / 4) - padding)
+      }
+    }
+    try {
+      return new TextEncoder().encode(decodeURIComponent(payload)).length
+    } catch {
+      return payload.length
+    }
+  }
+  if (isRawSvg(trimmed)) return new TextEncoder().encode(trimmed).length
+  if (trimmed.startsWith('iVBOR') || trimmed.startsWith('/9j/')) {
+    try {
+      return atob(trimmed).length
+    } catch {
+      return Math.floor((trimmed.length * 3) / 4)
+    }
+  }
+  return new TextEncoder().encode(trimmed).length
+}
+

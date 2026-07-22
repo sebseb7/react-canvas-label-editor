@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { imageSrcForStore, imageSrcFormat } from '../../utils/imageSrc'
+import { imageSrcForStore, imageSrcFormat, imagePayloadByteLength } from '../../utils/imageSrc'
 import { getBarcodeValidationError } from '../../utils/barcode'
 import {
   DEFAULT_TEXTBOX_FONT,
@@ -10,11 +10,30 @@ import { TEXTBOX_HALIGNS, TEXTBOX_VALIGNS } from '../../utils/textboxStyle'
 import { PNG_SCALE_MIN, TEXTBOX_ROTATIONS } from './constants'
 import { snapRotation } from './geometry'
 
-function imageSummary(src, labels) {
-  if (!src?.trim()) return labels.png.noImage
-  const format = imageSrcFormat(src)
-  if (!format) return labels.png.noImage
-  return labels.png.imageSummary(format.toUpperCase(), src.trim().length)
+const IMAGE_ROTATIONS = TEXTBOX_ROTATIONS
+
+function imageSummaryLines(obj, labels) {
+  if (!obj.src?.trim()) {
+    return { primary: labels.png.noImage, secondary: null }
+  }
+  const format = imageSrcFormat(obj.src)
+  if (!format) {
+    return { primary: labels.png.noImage, secondary: null }
+  }
+  const primary =
+    format === 'svg'
+      ? labels.png.imageSummary(format.toUpperCase(), obj.src.trim().length)
+      : labels.png.imageSummaryBytes(
+          format.toUpperCase(),
+          imagePayloadByteLength(obj.src),
+        )
+  if (!obj.rendered?.trim()) {
+    return { primary, secondary: labels.png.notRendered }
+  }
+  return {
+    primary,
+    secondary: labels.png.renderedSummary(imagePayloadByteLength(obj.rendered)),
+  }
 }
 
 const PLACEHOLDER = {
@@ -53,7 +72,9 @@ const PLACEHOLDER = {
     x: 0,
     y: 0,
     scale: 1,
+    rotation: 0,
     src: ' ',
+    rendered: '',
     blackpoint: 128,
   },
 }
@@ -326,14 +347,17 @@ function SvgEditDialog({ initialValue, onSave, onClose, components, labels }) {
   )
 }
 
-function PngFields({ obj, onChange, components, labels }) {
+function PngFields({ obj, onChange, components, labels, cropMode, onToggleCrop, onOptimize }) {
   const { Button, TextField, Slider } = components
   const t = labels.png
   const set = (field, value) => onChange(field, value)
   const blackpoint = obj.blackpoint ?? 128
   const format = imageSrcFormat(obj.src)
   const canEditSvg = format === 'svg' || !format
+  const canCrop = format === 'png' || format === 'jpeg'
+  const canOptimize = Boolean(obj.src?.trim())
   const [svgDialogOpen, setSvgDialogOpen] = useState(false)
+  const summary = imageSummaryLines(obj, labels)
 
   return (
     <>
@@ -341,14 +365,33 @@ function PngFields({ obj, onChange, components, labels }) {
         <TextField label={t.x} type="number" value={obj.x} onChange={(value) => set('x', value)} />
         <TextField label={t.y} type="number" value={obj.y} onChange={(value) => set('y', value)} />
       </FieldRow>
-      <TextField
-        label={t.scale}
-        type="number"
-        min={PNG_SCALE_MIN}
-        step={0.01}
-        value={obj.scale}
-        onChange={(value) => set('scale', Math.max(PNG_SCALE_MIN, value))}
-      />
+      <FieldRow>
+        <TextField
+          label={t.scale}
+          type="number"
+          min={PNG_SCALE_MIN}
+          step={0.01}
+          value={obj.scale}
+          onChange={(value) => set('scale', Math.max(PNG_SCALE_MIN, value))}
+        />
+        <label className="canvas-editor-field">
+          <span>{t.rotation}</span>
+          <select
+            value={String(snapRotation(obj.rotation ?? 0))}
+            onChange={(e) => {
+              const next = Number(e.target.value)
+              if (snapRotation(obj.rotation ?? 0) === next) return
+              set('rotation', next)
+            }}
+          >
+            {IMAGE_ROTATIONS.map((deg) => (
+              <option key={deg} value={String(deg)}>
+                {deg}°
+              </option>
+            ))}
+          </select>
+        </label>
+      </FieldRow>
       <Slider
         label={t.blackpoint(blackpoint)}
         min={0}
@@ -380,12 +423,23 @@ function PngFields({ obj, onChange, components, labels }) {
         />
       </label>
       <div className="canvas-editor-field-row canvas-editor-field-row--info">
-        <p className="canvas-editor-panel__image-info">
-          {imageSummary(obj.src, labels)}
-        </p>
-        {canEditSvg ? (
-          <Button onClick={() => setSvgDialogOpen(true)}>{t.editSvg}</Button>
-        ) : null}
+        <div className="canvas-editor-panel__image-info">
+          <div>{summary.primary}</div>
+          {summary.secondary ? <div>{summary.secondary}</div> : null}
+        </div>
+        <div className="canvas-editor-panel__image-actions">
+          {canEditSvg ? (
+            <Button onClick={() => setSvgDialogOpen(true)}>{t.editSvg}</Button>
+          ) : null}
+          {canCrop ? (
+            <Button onClick={() => onToggleCrop?.()}>
+              {cropMode ? t.doneCrop : t.cropImage}
+            </Button>
+          ) : null}
+          {canOptimize ? (
+            <Button onClick={() => onOptimize?.()}>{t.optimize}</Button>
+          ) : null}
+        </div>
       </div>
       {svgDialogOpen ? (
         <SvgEditDialog
@@ -410,6 +464,9 @@ export default function EditorPanel({
   onCopy,
   clipboard,
   onPaste,
+  cropMode,
+  onToggleCrop,
+  onOptimize,
   components,
   labels,
 }) {
@@ -463,7 +520,15 @@ export default function EditorPanel({
           <BarcodeFields obj={objFor('barcode')} onChange={onChangeFor('barcode')} components={components} labels={labels} />
         </div>
         <div className={layerClass('png', activeType)}>
-          <PngFields obj={objFor('png')} onChange={onChangeFor('png')} components={components} labels={labels} />
+          <PngFields
+            obj={objFor('png')}
+            onChange={onChangeFor('png')}
+            cropMode={cropMode}
+            onToggleCrop={onToggleCrop}
+            onOptimize={onOptimize}
+            components={components}
+            labels={labels}
+          />
         </div>
       </div>
       {!selected ? (

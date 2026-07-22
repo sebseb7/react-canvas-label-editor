@@ -44,7 +44,9 @@ import { createId } from '../../utils/createId'
  * @property {number} x
  * @property {number} y
  * @property {number} scale Fractional scale factor
- * @property {string} src Inline image: raw SVG, or data URL (PNG/JPEG base64)
+ * @property {number} [rotation] Rotation in degrees (0 / 90 / 180 / 270)
+ * @property {string} src Inline image: raw SVG, or data URL (PNG/JPEG base64) — editor source
+ * @property {string} [rendered] Final-scale 1-bit PNG data URL for server blit
  * @property {number} blackpoint Luminance threshold (0–255) for 1-bit conversion
  */
 
@@ -97,7 +99,9 @@ export function createPng(overrides = {}) {
     x: 280,
     y: 40,
     scale: 1,
+    rotation: 0,
     src: '',
+    rendered: '',
     blackpoint: 128,
     ...overrides,
   }

@@ -1,22 +1,33 @@
 import { Component, createRef } from 'react'
 import { drawTextboxContent } from '../../utils/drawTextbox'
 import { ensureEditorFontsLoaded } from '../../utils/textboxFonts'
-import { imageSrcForLoad } from '../../utils/imageSrc'
-import { oneBitCacheKey, render1BitCanvas } from '../../utils/image1bit'
+import { imageSrcForLoad, imageSrcForStore } from '../../utils/imageSrc'
+import { oneBitCacheKey, pngRenderedKey, render1BitCanvas } from '../../utils/image1bit'
+import {
+  encode1BitPngDataUrl,
+  encode1BitPngDataUrlFallback,
+} from '../../utils/encode1BitPng'
 import { renderBarcode } from '../../utils/barcode'
 import EditorPanel from './EditorPanel'
 import {
+  bakePngCrop,
   clampObjectToCanvas,
+  createCropDrag,
   createResizeDrag,
   createRotateDrag,
+  cropInsetsFromDrag,
   findHandleHit,
+  getCropHandleBounds,
   getObjectBounds,
+  getPngBounds,
   getResizeHandleBounds,
   getRotateHandleBounds,
   hitTest,
+  objectSupportsRotation,
   resizePatchForObject,
   rotationFromPointer,
   ROTATE_HANDLE_SIZE,
+  withBoundsRotation,
   withTextboxRotation,
 } from './geometry'
 import {
@@ -32,18 +43,26 @@ import { DEFAULT_COMPONENTS } from './defaultComponents'
 import { DEFAULT_LABELS, mergeLabels } from './defaultLabels'
 import './CanvasEditor.css'
 
+const EMPTY_CROP_INSETS = { left: 0, top: 0, right: 0, bottom: 0 }
+
 export default class CanvasEditor extends Component {
   canvasRef = createRef()
   imageCache = new Map()
   oneBitCache = new Map()
   fittedPngKeys = new Set()
+  /** @type {Map<string, string>} id → fingerprint of last written `rendered` */
+  renderedKeys = new Map()
   touchMoveBound = false
   /** Synchronous drag pointer so touchmove works before setState flushes. */
   activeDrag = null
+  /** Avoid re-entrant rendered writes while a patch is flushing. */
+  renderedWritePending = new Set()
 
   state = {
     selectedId: null,
     drag: null,
+    cropModeId: null,
+    cropInsets: { ...EMPTY_CROP_INSETS },
     internalHeight: CANVAS_HEIGHT_DEFAULT,
   }
 
@@ -99,7 +118,23 @@ export default class CanvasEditor extends Component {
         this.fittedPngKeys.delete(`${obj.id}:${prev.src}`)
         this.fittedPngKeys.delete(`${obj.id}:${obj.src}`)
         this.imageCache.delete(prev.src)
+        this.renderedKeys.delete(obj.id)
+        if (this.state.cropModeId === obj.id) {
+          this.setState({ cropInsets: { ...EMPTY_CROP_INSETS } })
+        }
+      } else if (
+        prev &&
+        (prev.scale !== obj.scale || prev.blackpoint !== obj.blackpoint)
+      ) {
+        this.renderedKeys.delete(obj.id)
       }
+    }
+
+    if (
+      this.state.cropModeId &&
+      !this.props.objects.some((o) => o.id === this.state.cropModeId && o.type === 'png')
+    ) {
+      this.exitCropMode({ bake: false })
     }
 
     if (
@@ -107,7 +142,9 @@ export default class CanvasEditor extends Component {
       prevProps.height !== this.props.height ||
       prevState.internalHeight !== this.state.internalHeight ||
       prevState.selectedId !== this.state.selectedId ||
-      prevState.drag !== this.state.drag
+      prevState.drag !== this.state.drag ||
+      prevState.cropModeId !== this.state.cropModeId ||
+      prevState.cropInsets !== this.state.cropInsets
     ) {
       this.redraw()
     }
@@ -143,12 +180,31 @@ export default class CanvasEditor extends Component {
   updateObject(id, patch) {
     const current = this.props.objects.find((o) => o.id === id)
     if (!current) return
+
+    let nextPatch = patch
+    if (current.type === 'png') {
+      const srcChanging = Object.prototype.hasOwnProperty.call(patch, 'src')
+      const paramsChanging =
+        Object.prototype.hasOwnProperty.call(patch, 'scale') ||
+        Object.prototype.hasOwnProperty.call(patch, 'blackpoint')
+      if (!Object.prototype.hasOwnProperty.call(patch, 'rendered')) {
+        if (srcChanging) {
+          // Source replaced — drop stale blit until the editor rebuilds it.
+          nextPatch = { ...patch, rendered: '' }
+          this.renderedKeys.delete(id)
+        } else if (paramsChanging) {
+          // Keep previous rendered for preview until the new 1-bit is ready.
+          this.renderedKeys.delete(id)
+        }
+      }
+    }
+
     // Skip no-op patches (rotate-drag often repeats the same 90° snap).
-    if (Object.keys(patch).every((key) => Object.is(current[key], patch[key]))) {
+    if (Object.keys(nextPatch).every((key) => Object.is(current[key], nextPatch[key]))) {
       return
     }
     this.updateObjects(
-      this.props.objects.map((o) => (o.id === id ? { ...o, ...patch } : o)),
+      this.props.objects.map((o) => (o.id === id ? { ...o, ...nextPatch } : o)),
     )
   }
 
@@ -163,6 +219,9 @@ export default class CanvasEditor extends Component {
   }
 
   deleteObject(id) {
+    if (this.state.cropModeId === id) {
+      this.exitCropMode({ bake: false })
+    }
     this.updateObjects(this.props.objects.filter((o) => o.id !== id))
     if (this.state.selectedId === id) {
       this.setState({ selectedId: null })
@@ -215,30 +274,191 @@ export default class CanvasEditor extends Component {
     this.setState({ drag })
   }
 
+  handleOptions() {
+    return {
+      cropModeId: this.state.cropModeId,
+      cropInsets: this.state.cropInsets,
+    }
+  }
+
+  enterCropMode(id) {
+    this.setState({
+      cropModeId: id,
+      cropInsets: { ...EMPTY_CROP_INSETS },
+      selectedId: id,
+    })
+  }
+
+  exitCropMode({ bake = true } = {}) {
+    const { cropModeId, cropInsets } = this.state
+    if (!cropModeId) return
+
+    if (bake) {
+      const obj = this.props.objects.find((o) => o.id === cropModeId)
+      if (obj?.type === 'png' && obj.src) {
+        const source = this.imageCache.get(obj.src)
+        if (source?.complete && source.naturalWidth) {
+          const patch = bakePngCrop(obj, source, cropInsets)
+          if (patch) {
+            this.updateObject(cropModeId, {
+              src: imageSrcForStore(patch.src),
+              x: patch.x,
+              y: patch.y,
+            })
+          }
+        }
+      }
+    }
+
+    this.setState({
+      cropModeId: null,
+      cropInsets: { ...EMPTY_CROP_INSETS },
+    })
+  }
+
+  toggleCropMode = () => {
+    const selected = this.getSelected()
+    if (!selected || selected.type !== 'png') return
+    if (this.state.cropModeId === selected.id) {
+      this.exitCropMode({ bake: true })
+    } else {
+      this.enterCropMode(selected.id)
+    }
+  }
+
+  /**
+   * Replace `src` with the current 1-bit preview PNG and reset scale to 1.
+   * Works for both SVG and raster sources — the live/preview bitmap becomes the asset.
+   */
+  optimizePng = async () => {
+    const selected = this.getSelected()
+    if (!selected || selected.type !== 'png' || !selected.src?.trim()) return
+
+    if (this.state.cropModeId === selected.id) {
+      this.exitCropMode({ bake: true })
+    }
+
+    const applyOptimized = (dataUrl, pixelW, pixelH) => {
+      const src = imageSrcForStore(dataUrl)
+      const blackpoint = selected.blackpoint ?? 128
+      this.fittedPngKeys.delete(`${selected.id}:${selected.src}`)
+      this.fittedPngKeys.delete(`${selected.id}:${src}`)
+      this.renderedKeys.set(selected.id, `${src}::${blackpoint}::1::${pixelW}x${pixelH}`)
+      this.updateObject(selected.id, {
+        src,
+        scale: 1,
+        rendered: dataUrl,
+      })
+    }
+
+    // Prefer the already-encoded preview blit when present.
+    if (selected.rendered?.trim()) {
+      try {
+        const { width, height } = await this.probeImageSize(selected.rendered)
+        applyOptimized(selected.rendered, width, height)
+        return
+      } catch {
+        // Rebuild from source below.
+      }
+    }
+
+    const source = await this.ensureSourceImage(selected.src)
+    if (!source) return
+
+    const blackpoint = selected.blackpoint ?? 128
+    const displayW = source.naturalWidth * selected.scale
+    const displayH = source.naturalHeight * selected.scale
+    const processed = this.get1BitImage(selected.src, source, blackpoint, displayW, displayH)
+    let dataUrl
+    try {
+      dataUrl = await encode1BitPngDataUrl(processed)
+    } catch {
+      dataUrl = encode1BitPngDataUrlFallback(processed)
+    }
+    applyOptimized(dataUrl, processed.width, processed.height)
+  }
+
+  probeImageSize(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      img.onload = () => {
+        if (!img.naturalWidth) {
+          reject(new Error('empty image'))
+          return
+        }
+        resolve({ width: img.naturalWidth, height: img.naturalHeight })
+      }
+      img.onerror = () => reject(new Error('image load failed'))
+      img.src = imageSrcForLoad(src)
+    })
+  }
+
+  ensureSourceImage(src) {
+    const existing = this.imageCache.get(src)
+    if (existing?.complete && existing.naturalWidth) {
+      return Promise.resolve(existing)
+    }
+    const img = this.loadSourceImage(src)
+    if (img?.complete && img.naturalWidth) {
+      return Promise.resolve(img)
+    }
+    return new Promise((resolve) => {
+      if (!img) {
+        resolve(null)
+        return
+      }
+      img.addEventListener(
+        'load',
+        () => resolve(img.naturalWidth ? img : null),
+        { once: true },
+      )
+      img.addEventListener('error', () => resolve(null), { once: true })
+    })
+  }
+
   onCanvasMouseDown = (event) => {
     if (event.touches) event.preventDefault()
     const { x, y } = this.canvasPoint(event)
     const { objects } = this.props
-    const { selectedId } = this.state
+    const { selectedId, cropModeId } = this.state
 
-    const handleHit = findHandleHit(objects, x, y, this.imageCache, selectedId)
+    const handleHit = findHandleHit(
+      objects,
+      x,
+      y,
+      this.imageCache,
+      selectedId,
+      this.handleOptions(),
+    )
     if (handleHit) {
       const obj = objects.find((o) => o.id === handleHit.id)
       this.bringToFront(handleHit.id)
       this.setState({ selectedId: handleHit.id })
-      this.setDrag(
-        handleHit.mode === 'rotate'
-          ? createRotateDrag(obj)
-          : createResizeDrag(obj, this.imageCache, x, y),
-      )
+      if (handleHit.mode === 'rotate') {
+        this.setDrag(createRotateDrag(obj, this.imageCache))
+      } else if (handleHit.mode === 'crop') {
+        this.setDrag(
+          createCropDrag(obj, this.imageCache, handleHit.side, x, y, this.state.cropInsets),
+        )
+      } else {
+        this.setDrag(createResizeDrag(obj, this.imageCache, x, y))
+      }
       return
     }
 
     const hitId = hitTest(objects, x, y, this.imageCache)
     if (hitId) {
+      if (cropModeId && hitId !== cropModeId) {
+        this.exitCropMode({ bake: true })
+      }
       const obj = objects.find((o) => o.id === hitId)
       this.bringToFront(hitId)
       this.setState({ selectedId: hitId })
+      // In crop mode, clicking the image selects it but does not move it.
+      if (cropModeId === hitId) {
+        this.setDrag(null)
+        return
+      }
       this.setDrag({
         mode: 'move',
         id: hitId,
@@ -250,6 +470,9 @@ export default class CanvasEditor extends Component {
       return
     }
 
+    if (cropModeId) {
+      this.exitCropMode({ bake: true })
+    }
     this.setDrag(null)
     this.setState({ selectedId: null })
   }
@@ -264,9 +487,13 @@ export default class CanvasEditor extends Component {
       y,
       this.imageCache,
       this.state.selectedId,
+      this.handleOptions(),
     )
     if (handleHit?.mode === 'rotate') {
       canvas.style.cursor = 'grab'
+    } else if (handleHit?.mode === 'crop') {
+      canvas.style.cursor =
+        handleHit.side === 'left' || handleHit.side === 'right' ? 'ew-resize' : 'ns-resize'
     } else if (handleHit?.mode === 'resize') {
       canvas.style.cursor = 'nwse-resize'
     } else {
@@ -283,6 +510,16 @@ export default class CanvasEditor extends Component {
     if (drag.mode === 'rotate') {
       this.updateObject(drag.id, {
         rotation: rotationFromPointer(drag.cx, drag.cy, x, y),
+      })
+      return
+    }
+
+    if (drag.mode === 'crop') {
+      const obj = this.props.objects.find((o) => o.id === drag.id)
+      const dx = x - drag.startX
+      const dy = y - drag.startY
+      this.setState({
+        cropInsets: cropInsetsFromDrag(drag, dx, dy, obj?.rotation ?? 0),
       })
       return
     }
@@ -318,7 +555,7 @@ export default class CanvasEditor extends Component {
     const width = this.props.width
     const height = this.canvasHeight()
     const { objects } = this.props
-    const { selectedId } = this.state
+    const { selectedId, cropModeId, cropInsets } = this.state
 
     ctx.clearRect(0, 0, width, height)
     ctx.fillStyle = '#ffffff'
@@ -331,55 +568,99 @@ export default class CanvasEditor extends Component {
 
     const selected = selectedId ? objects.find((o) => o.id === selectedId) : null
     if (selected) {
+      // Keep drawing the full image while cropping; chrome dims the discarded edges.
       this.drawObject(ctx, selected)
     }
 
     if (selected) {
-      const bounds = getObjectBounds(selected, this.imageCache)
-      if (bounds) {
+      const inCrop = cropModeId === selected.id && selected.type === 'png'
+      const fullBounds = getObjectBounds(selected, this.imageCache)
+      const cropBounds = inCrop
+        ? getPngBounds(selected, this.imageCache, cropInsets)
+        : fullBounds
+      if (fullBounds && cropBounds) {
         const drawChrome = () => {
+          if (inCrop) {
+            ctx.save()
+            ctx.fillStyle = 'rgba(148, 163, 184, 0.55)'
+            ctx.fillRect(fullBounds.x, fullBounds.y, fullBounds.w, cropInsets.top)
+            ctx.fillRect(
+              fullBounds.x,
+              fullBounds.y + fullBounds.h - cropInsets.bottom,
+              fullBounds.w,
+              cropInsets.bottom,
+            )
+            ctx.fillRect(
+              fullBounds.x,
+              fullBounds.y + cropInsets.top,
+              cropInsets.left,
+              fullBounds.h - cropInsets.top - cropInsets.bottom,
+            )
+            ctx.fillRect(
+              fullBounds.x + fullBounds.w - cropInsets.right,
+              fullBounds.y + cropInsets.top,
+              cropInsets.right,
+              fullBounds.h - cropInsets.top - cropInsets.bottom,
+            )
+            ctx.restore()
+          }
+
           ctx.strokeStyle = '#2563eb'
           ctx.lineWidth = 2
           ctx.setLineDash([])
-          ctx.strokeRect(bounds.x - 2, bounds.y - 2, bounds.w + 4, bounds.h + 4)
+          ctx.strokeRect(cropBounds.x - 2, cropBounds.y - 2, cropBounds.w + 4, cropBounds.h + 4)
 
-          const resize = getResizeHandleBounds(selected, this.imageCache)
-          if (resize) {
-            ctx.fillStyle = '#2563eb'
-            ctx.fillRect(resize.x, resize.y, resize.w, resize.h)
-            ctx.strokeStyle = '#ffffff'
-            ctx.lineWidth = 1
-            ctx.strokeRect(resize.x, resize.y, resize.w, resize.h)
-          }
-
-          if (selected.type === 'textbox') {
-            const rotate = getRotateHandleBounds(selected)
-            if (rotate) {
-              const stemX = bounds.x + bounds.w / 2
-              const stemTop = bounds.y
-              const handleCx = rotate.x + rotate.w / 2
-              const handleCy = rotate.y + rotate.h / 2
-              ctx.beginPath()
-              ctx.moveTo(stemX, stemTop)
-              ctx.lineTo(handleCx, handleCy)
-              ctx.strokeStyle = '#2563eb'
-              ctx.lineWidth = 1.5
-              ctx.stroke()
-
-              ctx.beginPath()
-              ctx.arc(handleCx, handleCy, ROTATE_HANDLE_SIZE / 2, 0, Math.PI * 2)
+          if (inCrop) {
+            const handles = getCropHandleBounds(selected, this.imageCache, cropInsets)
+            if (handles) {
+              for (const side of ['left', 'right', 'top', 'bottom']) {
+                const handle = handles[side]
+                ctx.fillStyle = '#2563eb'
+                ctx.fillRect(handle.x, handle.y, handle.w, handle.h)
+                ctx.strokeStyle = '#ffffff'
+                ctx.lineWidth = 1
+                ctx.strokeRect(handle.x, handle.y, handle.w, handle.h)
+              }
+            }
+          } else {
+            const resize = getResizeHandleBounds(selected, this.imageCache)
+            if (resize) {
               ctx.fillStyle = '#2563eb'
-              ctx.fill()
+              ctx.fillRect(resize.x, resize.y, resize.w, resize.h)
               ctx.strokeStyle = '#ffffff'
               ctx.lineWidth = 1
-              ctx.stroke()
+              ctx.strokeRect(resize.x, resize.y, resize.w, resize.h)
+            }
+
+            if (objectSupportsRotation(selected)) {
+              const rotate = getRotateHandleBounds(selected, this.imageCache)
+              if (rotate) {
+                const stemX = fullBounds.x + fullBounds.w / 2
+                const stemTop = fullBounds.y
+                const handleCx = rotate.x + rotate.w / 2
+                const handleCy = rotate.y + rotate.h / 2
+                ctx.beginPath()
+                ctx.moveTo(stemX, stemTop)
+                ctx.lineTo(handleCx, handleCy)
+                ctx.strokeStyle = '#2563eb'
+                ctx.lineWidth = 1.5
+                ctx.stroke()
+
+                ctx.beginPath()
+                ctx.arc(handleCx, handleCy, ROTATE_HANDLE_SIZE / 2, 0, Math.PI * 2)
+                ctx.fillStyle = '#2563eb'
+                ctx.fill()
+                ctx.strokeStyle = '#ffffff'
+                ctx.lineWidth = 1
+                ctx.stroke()
+              }
             }
           }
         }
 
         ctx.save()
-        if (selected.type === 'textbox') {
-          withTextboxRotation(ctx, selected, drawChrome)
+        if (objectSupportsRotation(selected)) {
+          withBoundsRotation(ctx, fullBounds, selected.rotation, drawChrome)
         } else {
           drawChrome()
         }
@@ -422,14 +703,18 @@ export default class CanvasEditor extends Component {
 
   drawPng(ctx, obj) {
     if (!obj.src) {
-      ctx.save()
+      if (obj.rendered) {
+        this.queueRenderedClear(obj.id)
+      }
       const size = 48 * obj.scale
-      ctx.strokeStyle = '#cbd5e1'
-      ctx.strokeRect(obj.x, obj.y, size, size)
-      ctx.fillStyle = '#94a3b8'
-      ctx.font = '12px sans-serif'
-      ctx.fillText('Image', obj.x + 8, obj.y + size / 2)
-      ctx.restore()
+      const bounds = { x: obj.x, y: obj.y, w: size, h: size }
+      withBoundsRotation(ctx, bounds, obj.rotation, () => {
+        ctx.strokeStyle = '#cbd5e1'
+        ctx.strokeRect(obj.x, obj.y, size, size)
+        ctx.fillStyle = '#94a3b8'
+        ctx.font = '12px sans-serif'
+        ctx.fillText('Image', obj.x + 8, obj.y + size / 2)
+      })
       return
     }
 
@@ -442,7 +727,60 @@ export default class CanvasEditor extends Component {
     const displayW = source.naturalWidth * obj.scale
     const displayH = source.naturalHeight * obj.scale
     const processed = this.get1BitImage(obj.src, source, blackpoint, displayW, displayH)
-    ctx.drawImage(processed, obj.x, obj.y, displayW, displayH)
+    this.ensurePngRendered(obj, processed)
+    const bounds = { x: obj.x, y: obj.y, w: displayW, h: displayH }
+
+    withBoundsRotation(ctx, bounds, obj.rotation, () => {
+      ctx.drawImage(processed, obj.x, obj.y, displayW, displayH)
+    })
+  }
+
+  queueRenderedClear(id) {
+    if (this.renderedWritePending.has(id)) return
+    this.renderedKeys.delete(id)
+    this.renderedWritePending.add(id)
+    queueMicrotask(() => {
+      this.renderedWritePending.delete(id)
+      const current = this.props.objects.find((o) => o.id === id)
+      if (current?.type === 'png' && current.rendered) {
+        this.updateObject(id, { rendered: '' })
+      }
+    })
+  }
+
+  /**
+   * Persist the final-scale 1-bit PNG on the object so the server can blit it
+   * without re-rasterizing `src`. Skipped while dragging (scale/crop) — flushed
+   * on the next idle redraw after mouseup.
+   */
+  ensurePngRendered(obj, processedCanvas) {
+    if (!obj?.id || obj.type !== 'png') return
+    if (this.activeDrag?.id === obj.id) return
+    if (this.renderedWritePending.has(obj.id)) return
+
+    const key = pngRenderedKey(obj, processedCanvas.width, processedCanvas.height)
+    if (this.renderedKeys.get(obj.id) === key) return
+
+    this.renderedKeys.set(obj.id, key)
+    this.renderedWritePending.add(obj.id)
+
+    const write = (rendered) => {
+      this.renderedWritePending.delete(obj.id)
+      const current = this.props.objects.find((o) => o.id === obj.id)
+      if (!current || current.type !== 'png') return
+      const nextKey = pngRenderedKey(
+        current,
+        processedCanvas.width,
+        processedCanvas.height,
+      )
+      if (this.renderedKeys.get(obj.id) !== nextKey) return
+      if (current.rendered === rendered) return
+      this.updateObject(obj.id, { rendered })
+    }
+
+    encode1BitPngDataUrl(processedCanvas).then(write, () => {
+      write(encode1BitPngDataUrlFallback(processedCanvas))
+    })
   }
 
   loadSourceImage(src) {
@@ -508,6 +846,8 @@ export default class CanvasEditor extends Component {
     const components = this.getComponents()
     const labels = this.getLabels()
     const { Button, Slider } = components
+    const selected = this.getSelected()
+    const cropMode = Boolean(this.state.cropModeId && this.state.cropModeId === selected?.id)
 
     return (
       <div className="canvas-editor">
@@ -543,12 +883,15 @@ export default class CanvasEditor extends Component {
             />
           </div>
           <EditorPanel
-            selected={this.getSelected()}
+            selected={selected}
             onUpdate={(id, patch) => this.updateObject(id, patch)}
             onDelete={(id) => this.deleteObject(id)}
             onCopy={(obj) => this.props.onCopy?.(obj)}
             clipboard={this.props.clipboard}
             onPaste={(clipboard) => this.pasteObject(clipboard)}
+            cropMode={cropMode}
+            onToggleCrop={this.toggleCropMode}
+            onOptimize={this.optimizePng}
             components={components}
             labels={labels}
           />

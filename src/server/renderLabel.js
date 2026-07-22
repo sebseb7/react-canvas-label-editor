@@ -1,8 +1,9 @@
 import { createCanvas, ImageData } from 'canvas'
 import { CANVAS_WIDTH } from '../components/CanvasEditor/constants.js'
-import { binarizeImageData, downsampleTo1Bit } from '../render/binarize.js'
+import { downsampleTo1Bit } from '../render/binarize.js'
 import { barcodeTextFontOptions, paintBarcodeOnCanvas } from '../utils/barcode.js'
 import { isRasterTextboxFont, resolveTextboxFont } from '../utils/textboxFonts.js'
+import { normalizeRotation } from '../utils/textboxRotation.js'
 import { drawServerTextbox } from './drawTextbox.js'
 import { loadSourceImage } from './loadSourceImage.js'
 import { registerServerFonts, SERVER_FONT_FAMILIES } from './loadServerFonts.js'
@@ -18,23 +19,39 @@ function drawBarcode(ctx, obj) {
   ctx.drawImage(canvas, obj.x, obj.y)
 }
 
+/**
+ * Blit the editor-prerendered 1-bit PNG. Never re-rasterize `src`.
+ * Drawn with smoothing off so the LABEL_RENDER_SCALE transform nearest-neighbor
+ * replicates pixels; the final downsample recovers the exact 1-bit bitmap.
+ */
 async function drawPng(ctx, obj) {
-  if (!obj.src?.trim()) return
+  if (!obj.rendered?.trim()) return
 
-  const source = await loadSourceImage(obj.src)
-  const logicalW = Math.max(1, Math.round(source.width * obj.scale))
-  const logicalH = Math.max(1, Math.round(source.height * obj.scale))
-  const displayW = logicalW * LABEL_RENDER_SCALE
-  const displayH = logicalH * LABEL_RENDER_SCALE
-  const temp = createCanvas(displayW, displayH)
-  const tctx = temp.getContext('2d')
-  tctx.imageSmoothingEnabled = true
-  tctx.drawImage(source, 0, 0, displayW, displayH)
+  const source = await loadSourceImage(obj.rendered)
+  const logicalW = source.width
+  const logicalH = source.height
+  const rotation = normalizeRotation(obj.rotation ?? 0)
 
-  const imageData = tctx.getImageData(0, 0, displayW, displayH)
-  binarizeImageData(imageData, obj.blackpoint ?? 128)
-  tctx.putImageData(imageData, 0, 0)
-  ctx.drawImage(temp, obj.x, obj.y, logicalW, logicalH)
+  const paint = () => {
+    ctx.save()
+    ctx.imageSmoothingEnabled = false
+    ctx.drawImage(source, obj.x, obj.y, logicalW, logicalH)
+    ctx.restore()
+  }
+
+  if (!rotation) {
+    paint()
+    return
+  }
+
+  const cx = obj.x + logicalW / 2
+  const cy = obj.y + logicalH / 2
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.rotate((rotation * Math.PI) / 180)
+  ctx.translate(-cx, -cy)
+  paint()
+  ctx.restore()
 }
 
 export async function renderLabel({ height, width = CANVAS_WIDTH, objects }) {
