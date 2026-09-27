@@ -52,7 +52,27 @@ class App extends Component {
 }
 ```
 
-`width`, `minHeight` and `maxHeight` are all optional and default to the library's built-in label size (`CANVAS_WIDTH`, `CANVAS_HEIGHT_MIN`, `CANVAS_HEIGHT_MAX`, also exported by the package).
+`width`, `height`, `minHeight` and `maxHeight` can all be configured via props:
+- `width`: Number of dots/pixels (default `448` / `CANVAS_WIDTH`). Supports controlled (`onWidthChange`), internal state, or fixed prop sizing.
+- `height`: Number of dots/pixels (default `200` / `CANVAS_HEIGHT_DEFAULT`). Supports controlled (`onHeightChange`), internal state, or fixed prop sizing.
+- `maxHeight`: Maximum canvas height allowed (default `1248` / `CANVAS_HEIGHT_MAX`). Both `maxHeight` and `maxheight` are accepted.
+- `minHeight`: Minimum canvas height allowed (default `80` / `CANVAS_HEIGHT_MIN`).
+- `showWidthUI`: Optional boolean (default `true`). Set to `false` to hide the Width selector from the toolbar.
+- `showHeightUI`: Optional boolean (default `true`). Set to `false` to hide the Height slider from the toolbar.
+- `showDimensions`: Optional boolean (default `true`). Set to `false` to hide both width and height controls from the toolbar.
+- `dpi`: Optional number (e.g. `203`, `300`). When width and height UI are both off (`showWidthUI={false}` and `showHeightUI={false}`) and `dpi` is provided, the toolbar displays real-world metric and inch label dimensions (e.g. `56 × 25 mm (2.2" × 0.99")`).
+- `previewScale`: Optional number (default `1`). Scales the editor's visual canvas preview bigger or smaller (e.g. `0.5` for 50%, `1.5` for 150%) while keeping internal pixel coordinates and interaction handles 100% accurate. Aliases `scale` and `zoom` are also accepted.
+
+### Printer Width Presets
+
+The library supports standard thermal printer size classes and DPIs:
+
+| Printer Class | Max Width | 203 DPI (8 dots/mm) | 300 DPI (12 dots/mm) |
+|---|---|---|---|
+| **2-Inch** (e.g. ZD410, ZD611) | 2.2 in (56 mm) | `CANVAS_WIDTH_2INCH_203DPI` (448 px) | `CANVAS_WIDTH_2INCH_300DPI` (640 px) |
+| **4-Inch** (e.g. ZT411, ZD421) | 4.09 in (104 mm) | `CANVAS_WIDTH_4INCH_203DPI` (832 px) | `CANVAS_WIDTH_4INCH_300DPI` (1248 px) |
+
+All 4 presets are exported in `CANVAS_WIDTHS` and described in `CANVAS_WIDTH_PRESETS`. The editor toolbar includes a dropdown to switch between widths; when switching to a smaller width, objects outside the new boundary are automatically clamped to remain on-canvas.
 
 ### Custom button, textfield, and slider components
 

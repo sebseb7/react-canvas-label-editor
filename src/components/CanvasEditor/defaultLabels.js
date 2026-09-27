@@ -9,6 +9,17 @@ export const DEFAULT_LABELS = {
     addBarcode: '+ Barcode',
     addImage: '+ Image',
     height: (height) => `Height ${height}`,
+    width: (width) => `Width ${width}`,
+    widthLabel: 'Width',
+    widthPresets: {
+      448: '2" 203 DPI (448 px)',
+      640: '2" 300 DPI (640 px)',
+      832: '4" 203 DPI (832 px)',
+      1248: '4" 300 DPI (1248 px)',
+    },
+    customWidth: (width) => `${width} px`,
+    measurements: ({ widthMm, heightMm, widthIn, heightIn }) =>
+      `${widthMm} × ${heightMm} mm (${widthIn}" × ${heightIn}")`,
   },
   panel: {
     titles: {

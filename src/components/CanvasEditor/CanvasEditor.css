@@ -7,6 +7,7 @@
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
   background: #f8fafc;
   text-align: left;
+  max-width: 100%;
 }
 
 .canvas-editor__toolbar {
@@ -19,22 +20,79 @@
   background: #f8fafc;
 }
 
-.canvas-editor__height {
+.canvas-editor__dimensions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
   margin-left: auto;
+}
+
+.canvas-editor__measurements {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+  padding: 0.25rem 0.55rem;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.canvas-editor__width {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   font-size: 0.75rem;
   color: #64748b;
+  margin: 0;
+  width: auto;
+}
+
+.canvas-editor__width span {
+  font-size: 0.75rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.canvas-editor__width select {
+  width: auto;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 0.75rem;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.canvas-editor__height {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: #64748b;
+  margin: 0;
+  width: auto;
+}
+
+.canvas-editor__height span {
+  font-size: 0.75rem;
+  color: #64748b;
+  white-space: nowrap;
 }
 
 .canvas-editor__height input[type='range'] {
-  width: 120px;
+  width: 100px;
 }
 
 .canvas-editor__body {
   display: flex;
   align-items: flex-start;
+  max-width: 100%;
 }
 
 .canvas-editor-panel {
@@ -97,10 +155,12 @@
 }
 
 .canvas-editor__stage {
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
   line-height: 0;
   border-right: 1px solid #e2e8f0;
   background: #e2e8f0;
+  overflow: auto;
 }
 
 .canvas-editor__canvas {
@@ -108,6 +168,7 @@
   background: #fff;
   cursor: default;
   touch-action: none;
+  image-rendering: pixelated;
 }
 
 .canvas-editor-btn {

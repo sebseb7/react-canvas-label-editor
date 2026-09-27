@@ -35,6 +35,7 @@ import {
   CANVAS_HEIGHT_MIN,
   CANVAS_HEIGHT_DEFAULT,
   CANVAS_WIDTH,
+  CANVAS_WIDTHS,
   PNG_SCALE_MIN,
 } from './constants'
 import { createBarcode, createPng, createTextbox } from './types'
@@ -58,36 +59,139 @@ export default class CanvasEditor extends Component {
   /** Avoid re-entrant rendered writes while a patch is flushing. */
   renderedWritePending = new Set()
 
-  state = {
-    selectedId: null,
-    drag: null,
-    cropModeId: null,
-    cropInsets: { ...EMPTY_CROP_INSETS },
-    internalHeight: CANVAS_HEIGHT_DEFAULT,
+  constructor(props) {
+    super(props)
+    this.state = {
+      selectedId: null,
+      drag: null,
+      cropModeId: null,
+      cropInsets: { ...EMPTY_CROP_INSETS },
+      internalHeight: props.height ?? CANVAS_HEIGHT_DEFAULT,
+      internalWidth: props.width ?? CANVAS_WIDTH,
+    }
+  }
+
+  maxHeight() {
+    const explicit = this.props.maxHeight !== undefined
+      ? this.props.maxHeight
+      : this.props.maxheight
+    if (explicit !== undefined && explicit !== null) {
+      return Number(explicit)
+    }
+    const currentH = this.props.height !== undefined ? Number(this.props.height) : 0
+    return Math.max(CANVAS_HEIGHT_MAX, currentH)
+  }
+
+  minHeight() {
+    const explicit = this.props.minHeight !== undefined
+      ? this.props.minHeight
+      : this.props.minheight
+    if (explicit !== undefined && explicit !== null) {
+      return Number(explicit)
+    }
+    return CANVAS_HEIGHT_MIN
+  }
+
+  showWidthUI() {
+    if (this.props.showDimensions === false || this.props.showdimensions === false) return false
+    const val = this.props.showWidthUI ?? this.props.showwidthui ?? this.props.showWidth ?? this.props.showwidth
+    return val !== undefined ? Boolean(val) : true
+  }
+
+  showHeightUI() {
+    if (this.props.showDimensions === false || this.props.showdimensions === false) return false
+    const val = this.props.showHeightUI ?? this.props.showheightui ?? this.props.showHeight ?? this.props.showheight
+    return val !== undefined ? Boolean(val) : true
+  }
+
+  previewScale() {
+    const raw = this.props.previewScale !== undefined
+      ? this.props.previewScale
+      : (this.props.previewscale ?? this.props.scale ?? this.props.zoom)
+    if (raw !== undefined && raw !== null) {
+      const num = Number(raw)
+      if (!Number.isNaN(num) && num > 0) {
+        return num
+      }
+    }
+    return 1
   }
 
   canvasHeight() {
-    return this.props.onHeightChange
-      ? this.props.height
-      : this.state.internalHeight
+    if (this.props.onHeightChange) {
+      return this.props.height ?? this.state.internalHeight
+    }
+    if (!this.showHeightUI() && this.props.height !== undefined) {
+      return this.props.height
+    }
+    return this.state.internalHeight ?? this.props.height
   }
 
   setCanvasHeight(height) {
+    const min = this.minHeight()
+    const max = this.maxHeight()
+    const nextHeight = Math.min(Math.max(min, Number(height) || min), max)
+
+    const currentWidth = this.canvasWidth()
+    const clampedObjects = this.props.objects.map((obj) =>
+      clampObjectToCanvas(obj, currentWidth, nextHeight, this.imageCache),
+    )
+    const objectsChanged = clampedObjects.some(
+      (obj, idx) =>
+        obj.x !== this.props.objects[idx].x || obj.y !== this.props.objects[idx].y,
+    )
+    if (objectsChanged) {
+      this.updateObjects(clampedObjects)
+    }
+
     if (this.props.onHeightChange) {
-      this.props.onHeightChange(height)
+      this.props.onHeightChange(nextHeight)
     } else {
-      this.setState({ internalHeight: height })
+      this.setState({ internalHeight: nextHeight })
+    }
+  }
+
+  canvasWidth() {
+    if (this.props.onWidthChange) {
+      return this.props.width ?? this.state.internalWidth
+    }
+    if (!this.showWidthUI() && this.props.width !== undefined) {
+      return this.props.width
+    }
+    return this.state.internalWidth ?? this.props.width
+  }
+
+  setCanvasWidth(width) {
+    const nextWidth = Number(width)
+    if (Number.isNaN(nextWidth) || nextWidth <= 0) return
+
+    const currentHeight = this.canvasHeight()
+    const clampedObjects = this.props.objects.map((obj) =>
+      clampObjectToCanvas(obj, nextWidth, currentHeight, this.imageCache),
+    )
+    const objectsChanged = clampedObjects.some(
+      (obj, idx) =>
+        obj.x !== this.props.objects[idx].x || obj.y !== this.props.objects[idx].y,
+    )
+    if (objectsChanged) {
+      this.updateObjects(clampedObjects)
+    }
+
+    if (this.props.onWidthChange) {
+      this.props.onWidthChange(nextWidth)
+    } else {
+      this.setState({ internalWidth: nextWidth })
     }
   }
 
   static defaultProps = {
     width: CANVAS_WIDTH,
     height: CANVAS_HEIGHT_DEFAULT,
-    minHeight: CANVAS_HEIGHT_MIN,
-    maxHeight: CANVAS_HEIGHT_MAX,
+    widths: CANVAS_WIDTHS,
     objects: [],
     onChange: null,
     onHeightChange: null,
+    onWidthChange: null,
     onCopy: null,
     clipboard: null,
     components: {},
@@ -137,10 +241,82 @@ export default class CanvasEditor extends Component {
       this.exitCropMode({ bake: false })
     }
 
+    if (prevProps.width !== this.props.width) {
+      const nextWidth = this.props.width !== undefined ? Number(this.props.width) || CANVAS_WIDTH : this.canvasWidth()
+      if (this.props.width !== undefined && !this.props.onWidthChange) {
+        this.setState({ internalWidth: nextWidth })
+      }
+      const currentHeight = this.canvasHeight()
+      const clampedObjects = this.props.objects.map((obj) =>
+        clampObjectToCanvas(obj, nextWidth, currentHeight, this.imageCache),
+      )
+      const objectsChanged = clampedObjects.some(
+        (obj, idx) =>
+          obj.x !== this.props.objects[idx].x || obj.y !== this.props.objects[idx].y,
+      )
+      if (objectsChanged && this.props.onChange) {
+        this.props.onChange(clampedObjects)
+      }
+    }
+
+    if (prevProps.height !== this.props.height) {
+      const nextHeight = this.props.height !== undefined
+        ? Math.min(
+            Math.max(this.minHeight(), Number(this.props.height) || this.minHeight()),
+            this.maxHeight(),
+          )
+        : this.canvasHeight()
+      if (this.props.height !== undefined && !this.props.onHeightChange) {
+        this.setState({ internalHeight: nextHeight })
+      }
+      const currentWidth = this.canvasWidth()
+      const clampedObjects = this.props.objects.map((obj) =>
+        clampObjectToCanvas(obj, currentWidth, nextHeight, this.imageCache),
+      )
+      const objectsChanged = clampedObjects.some(
+        (obj, idx) =>
+          obj.x !== this.props.objects[idx].x || obj.y !== this.props.objects[idx].y,
+      )
+      if (objectsChanged && this.props.onChange) {
+        this.props.onChange(clampedObjects)
+      }
+    }
+
+    const prevMaxExplicit = prevProps.maxHeight !== undefined
+      ? prevProps.maxHeight
+      : prevProps.maxheight
+    const prevMax = prevMaxExplicit !== undefined && prevMaxExplicit !== null
+      ? Number(prevMaxExplicit)
+      : Math.max(CANVAS_HEIGHT_MAX, prevProps.height !== undefined ? Number(prevProps.height) : 0)
+    const currentMax = this.maxHeight()
+    if (prevMax !== currentMax) {
+      const currentH = this.canvasHeight()
+      if (currentH > currentMax) {
+        this.setCanvasHeight(currentMax)
+      } else {
+        this.redraw()
+      }
+    }
+
     if (
       prevProps.objects !== this.props.objects ||
       prevProps.height !== this.props.height ||
+      prevProps.width !== this.props.width ||
+      prevProps.maxHeight !== this.props.maxHeight ||
+      prevProps.maxheight !== this.props.maxheight ||
+      prevProps.minHeight !== this.props.minHeight ||
+      prevProps.minheight !== this.props.minheight ||
+      prevProps.showWidthUI !== this.props.showWidthUI ||
+      prevProps.showHeightUI !== this.props.showHeightUI ||
+      prevProps.showWidth !== this.props.showWidth ||
+      prevProps.showHeight !== this.props.showHeight ||
+      prevProps.showDimensions !== this.props.showDimensions ||
+      prevProps.previewScale !== this.props.previewScale ||
+      prevProps.previewscale !== this.props.previewscale ||
+      prevProps.scale !== this.props.scale ||
+      prevProps.zoom !== this.props.zoom ||
       prevState.internalHeight !== this.state.internalHeight ||
+      prevState.internalWidth !== this.state.internalWidth ||
       prevState.selectedId !== this.state.selectedId ||
       prevState.drag !== this.state.drag ||
       prevState.cropModeId !== this.state.cropModeId ||
@@ -231,7 +407,7 @@ export default class CanvasEditor extends Component {
   addObject(factory) {
     const obj = clampObjectToCanvas(
       factory(),
-      this.props.width,
+      this.canvasWidth(),
       this.canvasHeight(),
       this.imageCache,
     )
@@ -248,7 +424,7 @@ export default class CanvasEditor extends Component {
         x: (clipboard.x ?? 0) + 20,
         y: (clipboard.y ?? 0) + 20,
       },
-      this.props.width,
+      this.canvasWidth(),
       this.canvasHeight(),
       this.imageCache,
     )
@@ -552,7 +728,7 @@ export default class CanvasEditor extends Component {
     if (!canvas) return
 
     const ctx = canvas.getContext('2d')
-    const width = this.props.width
+    const width = this.canvasWidth()
     const height = this.canvasHeight()
     const { objects } = this.props
     const { selectedId, cropModeId, cropInsets } = this.state
@@ -803,7 +979,7 @@ export default class CanvasEditor extends Component {
   }
 
   fitPngToCanvas(obj, sourceImage) {
-    const width = this.props.width
+    const width = this.canvasWidth()
     const height = this.canvasHeight()
     const fitKey = `${obj.id}:${obj.src}`
     if (this.fittedPngKeys.has(fitKey)) return
@@ -841,13 +1017,64 @@ export default class CanvasEditor extends Component {
   }
 
   render() {
-    const { width, minHeight, maxHeight } = this.props
+    const minHeight = this.minHeight()
+    const maxHeight = this.maxHeight()
+    const widths = this.props.widths || CANVAS_WIDTHS
+    const width = this.canvasWidth()
     const height = this.canvasHeight()
+    const showWidthUI = this.showWidthUI()
+    const showHeightUI = this.showHeightUI()
+    const showDimensions = showWidthUI || showHeightUI
     const components = this.getComponents()
     const labels = this.getLabels()
-    const { Button, Slider } = components
+    const { Button, Slider, Select } = components
     const selected = this.getSelected()
     const cropMode = Boolean(this.state.cropModeId && this.state.cropModeId === selected?.id)
+
+    const widthOptions = widths.map((w) => {
+      const presetLabel = labels.toolbar.widthPresets?.[w]
+      const label =
+        presetLabel ||
+        (labels.toolbar.customWidth ? labels.toolbar.customWidth(w) : `${w} px`)
+      return { value: w, label }
+    })
+    if (!widthOptions.some((opt) => Number(opt.value) === Number(width))) {
+      widthOptions.push({
+        value: width,
+        label: labels.toolbar.customWidth
+          ? labels.toolbar.customWidth(width)
+          : `${width} px`,
+      })
+    }
+
+    const rawDpi = this.props.dpi ?? this.props.DPI
+    const dpi = rawDpi !== undefined && rawDpi !== null && Number(rawDpi) > 0 ? Number(rawDpi) : null
+    const showMeasurements = !showWidthUI && !showHeightUI && dpi !== null
+
+    let measurementText = null
+    if (showMeasurements) {
+      const widthMm = Number(((width / dpi) * 25.4).toFixed(1))
+      const heightMm = Number(((height / dpi) * 25.4).toFixed(1))
+      const widthIn = Number((width / dpi).toFixed(2))
+      const heightIn = Number((height / dpi).toFixed(2))
+      measurementText = labels.toolbar.measurements
+        ? labels.toolbar.measurements({
+            widthMm,
+            heightMm,
+            widthIn,
+            heightIn,
+            width,
+            height,
+            dpi,
+          })
+        : `${widthMm} × ${heightMm} mm (${widthIn}" × ${heightIn}")`
+    }
+
+    const scale = this.previewScale()
+    const canvasStyle = scale !== 1 ? {
+      width: `${Math.round(width * scale)}px`,
+      height: `${Math.round(height * scale)}px`,
+    } : undefined
 
     return (
       <div className="canvas-editor">
@@ -861,14 +1088,33 @@ export default class CanvasEditor extends Component {
           </Button>
           <Button onClick={() => this.addObject(createBarcode)}>{labels.toolbar.addBarcode}</Button>
           <Button onClick={() => this.addObject(createPng)}>{labels.toolbar.addImage}</Button>
-          <Slider
-            className="canvas-editor__height"
-            label={labels.toolbar.height(height)}
-            min={minHeight}
-            max={maxHeight}
-            value={height}
-            onChange={(value) => this.setCanvasHeight(value)}
-          />
+          {showDimensions ? (
+            <div className="canvas-editor__dimensions">
+              {showWidthUI && (
+                <Select
+                  className="canvas-editor__width"
+                  label={labels.toolbar.widthLabel}
+                  value={width}
+                  options={widthOptions}
+                  onChange={(value) => this.setCanvasWidth(value)}
+                />
+              )}
+              {showHeightUI && (
+                <Slider
+                  className="canvas-editor__height"
+                  label={labels.toolbar.height(height)}
+                  min={minHeight}
+                  max={maxHeight}
+                  value={height}
+                  onChange={(value) => this.setCanvasHeight(value)}
+                />
+              )}
+            </div>
+          ) : showMeasurements ? (
+            <div className="canvas-editor__measurements">
+              {measurementText}
+            </div>
+          ) : null}
         </div>
         <div className="canvas-editor__body">
           <div className="canvas-editor__stage">
@@ -877,6 +1123,7 @@ export default class CanvasEditor extends Component {
               className="canvas-editor__canvas"
               width={width}
               height={height}
+              style={canvasStyle}
               onMouseDown={this.onCanvasMouseDown}
               onMouseMove={this.onCanvasMouseMove}
               onTouchStart={this.onCanvasMouseDown}

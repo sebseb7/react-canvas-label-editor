@@ -104,8 +104,42 @@ export function DefaultSlider({
   )
 }
 
+export function DefaultSelect({
+  label,
+  value,
+  onChange,
+  options,
+  children,
+  disabled = false,
+  className = 'canvas-editor-field',
+}) {
+  return (
+    <label className={className}>
+      {label ? <span>{label}</span> : null}
+      <select
+        value={value}
+        disabled={disabled}
+        onChange={(e) => {
+          const val = e.target.value
+          const num = Number(val)
+          onChange(!Number.isNaN(num) && val.trim() !== '' ? num : val)
+        }}
+      >
+        {options
+          ? options.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))
+          : children}
+      </select>
+    </label>
+  )
+}
+
 export const DEFAULT_COMPONENTS = {
   Button: DefaultButton,
   TextField: DefaultTextField,
   Slider: DefaultSlider,
+  Select: DefaultSelect,
 }

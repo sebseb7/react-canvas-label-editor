@@ -5,6 +5,7 @@ import {
   CANVAS_HEIGHT_MIN,
   CANVAS_HEIGHT_MAX,
   CANVAS_WIDTH,
+  CANVAS_WIDTHS,
 } from 'react-canvas-label-editor'
 import { createBarcode, createPng, createTextbox } from '../src/components/CanvasEditor/types.js'
 import { REACT_LOGO_SVG } from './sampleImages'
@@ -37,7 +38,13 @@ const initialObjects = [
 
 export default function DevApp() {
   const [objects, setObjects] = useState(initialObjects)
+  const [width, setWidth] = useState(CANVAS_WIDTH)
   const [height, setHeight] = useState(CANVAS_HEIGHT_DEFAULT)
+  const [maxHeight, setMaxHeight] = useState(CANVAS_HEIGHT_MAX)
+  const [dpi, setDpi] = useState(203)
+  const [previewScale, setPreviewScale] = useState(1)
+  const [showWidthUI, setShowWidthUI] = useState(true)
+  const [showHeightUI, setShowHeightUI] = useState(true)
   const [previewUrl, setPreviewUrl] = useState(null)
   const [previewError, setPreviewError] = useState(null)
   const [clipboard, setClipboard] = useState(null)
@@ -61,7 +68,7 @@ export default function DevApp() {
         const res = await fetch('/api/render', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ height, width: CANVAS_WIDTH, objects }),
+          body: JSON.stringify({ height, width, objects }),
           signal: controller.signal,
         })
         if (!res.ok) {
@@ -83,7 +90,7 @@ export default function DevApp() {
       clearTimeout(timer)
       controller.abort()
     }
-  }, [height, objects])
+  }, [height, width, objects])
 
   useEffect(() => {
     return () => {
@@ -96,10 +103,101 @@ export default function DevApp() {
 
   return (
     <div className="dev-app">
+      <div className="dev-app__config">
+        <label className="dev-app__config-item">
+          <input
+            type="checkbox"
+            checked={showWidthUI}
+            onChange={(e) => setShowWidthUI(e.target.checked)}
+          />
+          Show Width UI
+        </label>
+        <label className="dev-app__config-item">
+          <input
+            type="checkbox"
+            checked={showHeightUI}
+            onChange={(e) => setShowHeightUI(e.target.checked)}
+          />
+          Show Height UI
+        </label>
+        <label className="dev-app__config-item">
+          <span>DPI:</span>
+          <select
+            value={dpi ?? ''}
+            onChange={(e) => setDpi(e.target.value ? Number(e.target.value) : null)}
+          >
+            <option value="">None</option>
+            <option value="203">203 DPI</option>
+            <option value="300">300 DPI</option>
+            <option value="600">600 DPI</option>
+          </select>
+        </label>
+        <label className="dev-app__config-item">
+          <span>Scale:</span>
+          <select
+            value={previewScale}
+            onChange={(e) => setPreviewScale(Number(e.target.value))}
+          >
+            <option value="0.25">25%</option>
+            <option value="0.5">50%</option>
+            <option value="0.75">75%</option>
+            <option value="1">100%</option>
+            <option value="1.25">125%</option>
+            <option value="1.5">150%</option>
+            <option value="2">200%</option>
+          </select>
+        </label>
+        <label className="dev-app__config-item">
+          <span>Max Height:</span>
+          <input
+            type="number"
+            min={CANVAS_HEIGHT_MIN}
+            max={2400}
+            step={20}
+            value={maxHeight}
+            onChange={(e) => setMaxHeight(Number(e.target.value) || CANVAS_HEIGHT_MAX)}
+          />
+        </label>
+        {!showWidthUI && (
+          <label className="dev-app__config-item">
+            <span>Prop Width:</span>
+            <select
+              value={width}
+              onChange={(e) => setWidth(Number(e.target.value))}
+            >
+              {CANVAS_WIDTHS.map((w) => (
+                <option key={w} value={w}>
+                  {w} px
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {!showHeightUI && (
+          <label className="dev-app__config-item">
+            <span>Prop Height:</span>
+            <input
+              type="number"
+              min={CANVAS_HEIGHT_MIN}
+              max={maxHeight}
+              step={10}
+              value={height}
+              onChange={(e) => setHeight(Number(e.target.value))}
+            />
+          </label>
+        )}
+      </div>
+
       <CanvasEditor
-        width={CANVAS_WIDTH}
+        width={width}
+        onWidthChange={setWidth}
+        widths={CANVAS_WIDTHS}
         minHeight={CANVAS_HEIGHT_MIN}
-        maxHeight={CANVAS_HEIGHT_MAX}
+        maxHeight={maxHeight}
+        showWidthUI={showWidthUI}
+        showHeightUI={showHeightUI}
+        dpi={dpi}
+        previewScale={previewScale}
         height={height}
         onHeightChange={setHeight}
         objects={objects}
@@ -111,14 +209,17 @@ export default function DevApp() {
         <h2>Label Preview</h2>
         <div
           className="dev-app__preview-frame"
-          style={{ '--preview-height': `${height}px` }}
+          style={{
+            '--preview-height': `${Math.round(height * previewScale)}px`,
+            '--preview-width': `${Math.round(width * previewScale)}px`,
+          }}
         >
           {previewUrl ? (
             <img
               className="dev-app__preview-image"
               src={previewUrl}
-              width={CANVAS_WIDTH}
-              height={height}
+              width={Math.round(width * previewScale)}
+              height={Math.round(height * previewScale)}
               alt="Server-rendered 1-bit label"
             />
           ) : previewError ? (
@@ -128,7 +229,7 @@ export default function DevApp() {
       </section>
       <details className="dev-app__json">
         <summary>Object data</summary>
-        <pre>{JSON.stringify({ height, objects }, null, 2)}</pre>
+        <pre>{JSON.stringify({ width, height, objects }, null, 2)}</pre>
       </details>
     </div>
   )
