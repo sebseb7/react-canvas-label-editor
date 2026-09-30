@@ -1,4 +1,4 @@
-import { renderLabel } from '../src/server/renderLabel.js'
+import { renderLabel, validateObjects } from '../src/server/renderLabel.js'
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -21,12 +21,14 @@ function attachRenderApi(middlewares) {
       const body = JSON.parse(raw.toString('utf8'))
       const { height, width, objects } = body ?? {}
 
-      if (!Array.isArray(objects)) {
+      const validation = validateObjects(objects)
+      if (!validation.valid) {
         res.statusCode = 400
         res.setHeader('Content-Type', 'application/json')
-        res.end(JSON.stringify({ error: 'Expected { height, objects }' }))
+        res.end(JSON.stringify({ error: 'Invalid objects', details: validation.errors }))
         return
       }
+
 
       const start = performance.now()
       const png = await renderLabel({

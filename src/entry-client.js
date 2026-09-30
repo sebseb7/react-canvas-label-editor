@@ -1,5 +1,6 @@
 export { default as CanvasEditor } from './components/CanvasEditor/index.js'
 export * from './components/CanvasEditor/constants.js'
+export { validateObjects, validateObject } from './utils/validateObjects.js'
 import './components/CanvasEditor/CanvasEditor.css'
 
 /** @returns {never} */
@@ -8,3 +9,4 @@ export function renderLabel() {
     'renderLabel is only available in Node.js. Import it from server-side code.',
   )
 }
+

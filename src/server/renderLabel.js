@@ -8,6 +8,8 @@ import { drawServerTextbox } from './drawTextbox.js'
 import { loadSourceImage } from './loadSourceImage.js'
 import { registerServerFonts, SERVER_FONT_FAMILIES } from './loadServerFonts.js'
 import { LABEL_RENDER_SCALE } from './renderConstants.js'
+export { validateObjects, validateObject } from '../utils/validateObjects.js'
+
 
 function drawBarcode(ctx, obj) {
   registerServerFonts()

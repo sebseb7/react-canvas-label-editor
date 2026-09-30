@@ -155,9 +155,27 @@ const germanLabels = {
 ## Serverside:
 
 ```js
-import { renderLabel } from 'react-canvas-label-editor'
+import { renderLabel, validateObjects } from 'react-canvas-label-editor'
+
+const { valid, errors } = validateObjects(objects)
+if (!valid) {
+  throw new Error(`Invalid label objects:\n${errors.join('\n')}`)
+}
 
 const pngBuffer = await renderLabel({ height: 200, width: 448, objects })
 ```
 
 `width` is optional on `renderLabel` too and defaults to `CANVAS_WIDTH` when omitted.
+
+### Validating Objects:
+
+`validateObjects(objects)` is exported for both client and server usage. It validates that `objects` is an array of valid canvas label items (`textbox`, `barcode`, `png`), verifying required fields, uniqueness of IDs, bounds, supported fonts, rotations, and symbologies:
+
+```js
+import { validateObjects } from 'react-canvas-label-editor'
+
+const result = validateObjects(objects)
+// result => { valid: true, errors: [] }
+// or => { valid: false, errors: ['objects[0] (id: "1"): "w" must be a positive number', ...] }
+```
+
