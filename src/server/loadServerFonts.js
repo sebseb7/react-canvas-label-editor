@@ -1,7 +1,7 @@
-import { existsSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { registerFont } from 'canvas'
+import CanvasKitInit from 'canvaskit-wasm'
 
 function resolveFontsDir() {
   const here = path.dirname(fileURLToPath(import.meta.url))
@@ -11,9 +11,7 @@ function resolveFontsDir() {
   throw new Error('Label editor font files not found')
 }
 
-const fontsDir = resolveFontsDir()
-
-/** Pango family names used only on the server label rasterizer. */
+/** Font family names used on the label rasterizer. */
 export const SERVER_FONT_FAMILIES = {
   'outfit-light': 'LabelOutfitLight',
   outfit: 'LabelOutfit',
@@ -38,23 +36,40 @@ const FONT_WEIGHTS = {
   'barlow-semi-condensed': '500',
 }
 
-let registered = false
+let ckInstancePromise = null
 
 export function registerServerFonts() {
-  if (registered) return
-  registered = true
-
-  // node-canvas/Pango renders WOFF as missing-glyph boxes; TTF is required.
-  // Each weight is registered under its own family name because Pango's
-  // weight matching across faces of one family is unreliable.
-  for (const font of Object.keys(SERVER_FONT_FAMILIES)) {
-    registerFont(path.join(fontsDir, FONT_FILES[font]), {
-      family: SERVER_FONT_FAMILIES[font],
-      weight: FONT_WEIGHTS[font],
-    })
-  }
+  // Synchronous no-op kept for backwards compatibility.
+  // getCanvasKit() initializes fonts asynchronously before rendering starts.
 }
 
 export function serverFontFamily(fontId) {
   return SERVER_FONT_FAMILIES[fontId] ?? SERVER_FONT_FAMILIES.outfit
+}
+
+export async function getCanvasKit() {
+  if (ckInstancePromise) return ckInstancePromise
+
+  ckInstancePromise = (async () => {
+    const ck = await CanvasKitInit()
+    const fontCanvas = ck.MakeCanvas(1, 1)
+    const fontsDir = resolveFontsDir()
+
+    for (const [key, filename] of Object.entries(FONT_FILES)) {
+      const bytes = readFileSync(path.join(fontsDir, filename))
+      const weight = FONT_WEIGHTS[key]
+      const serverFam = SERVER_FONT_FAMILIES[key]
+      fontCanvas.loadFont(bytes, { family: serverFam, weight })
+      if (key.startsWith('outfit')) {
+        fontCanvas.loadFont(bytes, { family: 'Outfit', weight })
+        fontCanvas.loadFont(bytes, { family: 'sans-serif', weight })
+      } else if (key === 'barlow-semi-condensed') {
+        fontCanvas.loadFont(bytes, { family: 'Barlow Semi Condensed', weight })
+      }
+    }
+
+    return { ck, fontCanvas }
+  })()
+
+  return ckInstancePromise
 }

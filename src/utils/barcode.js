@@ -71,7 +71,7 @@ export function normalizeBarcodeCode(code, format) {
 }
 
 function barcodeFontSize(obj) {
-  return Math.max(10, Math.round(obj.scale * 7))
+  return Math.max(14, Math.round(obj.scale * 9))
 }
 
 function barcodeCacheKey(obj, invalidMessage) {
@@ -169,7 +169,6 @@ function drawEan13Caption(canvas, code, obj, textFontOptions, fontSize, textMarg
       EAN13_MIDDLE_MODULES +
       EAN13_LEFT_DIGIT_MODULES / 2) *
     moduleWidth
-  const y = obj.h + textMargin + fontSize
 
   const weight = textFontOptions.fontOptions ? `${textFontOptions.fontOptions} ` : ''
   ctx.fillStyle = '#000000'
@@ -178,9 +177,25 @@ function drawEan13Caption(canvas, code, obj, textFontOptions, fontSize, textMarg
   ctx.textBaseline = 'alphabetic'
   // Keep first digit under the bars; gap separates it from the left 6 and
   // separates the check digit from the right 5.
-  const gap = '  '
-  ctx.fillText(`${code[0]}${gap}${code.slice(1, 7)}`, leftCenter, y)
-  ctx.fillText(`${code.slice(7, 12)}${gap}${code[12]}`, rightCenter, y)
+  const gap = ' '
+  const leftText = `${code[0]}${gap}${code.slice(1, 7)}`
+  const rightText = `${code.slice(7, 12)}${gap}${code[12]}`
+
+  // Ensure digits fit cleanly within the halves without colliding with guard bars
+  const maxHalfWidth = (EAN13_LEFT_DIGIT_MODULES - 3) * moduleWidth
+  let currentFontSize = fontSize
+  while (
+    currentFontSize > 10 &&
+    (ctx.measureText(leftText).width > maxHalfWidth ||
+      ctx.measureText(rightText).width > maxHalfWidth)
+  ) {
+    currentFontSize--
+    ctx.font = `${weight}${currentFontSize}px ${textFontOptions.font}`
+  }
+
+  const y = obj.h + textMargin + currentFontSize
+  ctx.fillText(leftText, leftCenter, y)
+  ctx.fillText(rightText, rightCenter, y)
 }
 
 function paintQrOnCanvas(canvas, code, moduleWidth) {

@@ -1,4 +1,5 @@
-import { renderLabel, validateObjects } from '../src/server/renderLabel.js'
+import path from 'path'
+import { pathToFileURL } from 'url'
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -21,6 +22,8 @@ function attachRenderApi(middlewares) {
       const body = JSON.parse(raw.toString('utf8'))
       const { height, width, objects } = body ?? {}
 
+      const moduleUrl = pathToFileURL(path.resolve(process.cwd(), 'src/server/renderLabel.js')).href
+      const { renderLabel, validateObjects } = await import(`${moduleUrl}?t=${Date.now()}`)
       const validation = validateObjects(objects)
       if (!validation.valid) {
         res.statusCode = 400

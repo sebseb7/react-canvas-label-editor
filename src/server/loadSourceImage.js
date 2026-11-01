@@ -1,36 +1,24 @@
-import { loadImage } from 'canvas'
-import sharp from 'sharp'
-import { ensureSvgDimensions, imageSrcForLoad, isRawSvg } from '../utils/imageSrc.js'
+import { imageSrcForLoad } from '../utils/imageSrc.js'
 
-async function svgToImage(svg) {
-  const pngBuffer = await sharp(Buffer.from(ensureSvgDimensions(svg))).png().toBuffer()
-  return loadImage(pngBuffer)
-}
-
-function svgFromDataUrl(dataUrl) {
+function bytesFromDataUrl(dataUrl) {
   const comma = dataUrl.indexOf(',')
+  if (comma === -1) {
+    return Buffer.from(dataUrl, 'base64')
+  }
   const meta = dataUrl.slice(0, comma)
   const payload = dataUrl.slice(comma + 1)
   if (meta.includes(';base64')) {
-    return Buffer.from(payload, 'base64').toString('utf8')
+    return Buffer.from(payload, 'base64')
   }
-  return decodeURIComponent(payload)
+  return Buffer.from(decodeURIComponent(payload), 'utf8')
 }
 
-export async function loadSourceImage(src) {
+export async function loadSourceImage(src, hostCanvas) {
   if (!src?.trim()) {
     throw new Error('Empty image source')
   }
 
-  const trimmed = src.trim()
-  if (isRawSvg(trimmed)) {
-    return svgToImage(trimmed)
-  }
-
   const dataUrl = imageSrcForLoad(src)
-  if (dataUrl.includes('image/svg+xml')) {
-    return svgToImage(svgFromDataUrl(dataUrl))
-  }
-
-  return loadImage(dataUrl)
+  const bytes = bytesFromDataUrl(dataUrl)
+  return hostCanvas.decodeImage(bytes)
 }
