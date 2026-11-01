@@ -11,14 +11,8 @@ function resolveFontsDir() {
   throw new Error('Label editor font files not found')
 }
 
-/** Font family names used on the label rasterizer. */
-export const SERVER_FONT_FAMILIES = {
-  'outfit-light': 'LabelOutfitLight',
-  outfit: 'LabelOutfit',
-  'outfit-bold': 'LabelOutfitBold',
-  'outfit-black': 'LabelOutfitBlack',
-  'barlow-semi-condensed': 'LabelBarlowSemiCondensed',
-}
+import { SERVER_FONT_FAMILIES } from '../utils/textboxFonts.js'
+export { SERVER_FONT_FAMILIES, serverFontFamily } from '../utils/textboxFonts.js'
 
 const FONT_FILES = {
   'outfit-light': 'Outfit-Light.ttf',
@@ -43,9 +37,7 @@ export function registerServerFonts() {
   // getCanvasKit() initializes fonts asynchronously before rendering starts.
 }
 
-export function serverFontFamily(fontId) {
-  return SERVER_FONT_FAMILIES[fontId] ?? SERVER_FONT_FAMILIES.outfit
-}
+
 
 export async function getCanvasKit() {
   if (ckInstancePromise) return ckInstancePromise

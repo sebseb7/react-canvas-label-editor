@@ -1,16 +1,29 @@
 import { imageSrcForLoad } from '../utils/imageSrc.js'
 
+function base64ToUint8Array(base64) {
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(base64, 'base64')
+  }
+  const binary = atob(base64)
+  const bytes = new Uint8Array(binary.length)
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i)
+  }
+  return bytes
+}
+
 function bytesFromDataUrl(dataUrl) {
   const comma = dataUrl.indexOf(',')
   if (comma === -1) {
-    return Buffer.from(dataUrl, 'base64')
+    return base64ToUint8Array(dataUrl)
   }
   const meta = dataUrl.slice(0, comma)
   const payload = dataUrl.slice(comma + 1)
   if (meta.includes(';base64')) {
-    return Buffer.from(payload, 'base64')
+    return base64ToUint8Array(payload)
   }
-  return Buffer.from(decodeURIComponent(payload), 'utf8')
+  const str = decodeURIComponent(payload)
+  return new TextEncoder().encode(str)
 }
 
 export async function loadSourceImage(src, hostCanvas) {

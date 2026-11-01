@@ -41,6 +41,8 @@ export default function DevApp() {
   const [width, setWidth] = useState(CANVAS_WIDTH)
   const [height, setHeight] = useState(CANVAS_HEIGHT_DEFAULT)
   const [maxHeight, setMaxHeight] = useState(CANVAS_HEIGHT_MAX)
+  const [engine, setEngine] = useState('canvaskit')
+  const [antialiased, setAntialiased] = useState(false)
   const [dpi, setDpi] = useState(203)
   const [previewScale, setPreviewScale] = useState(1)
   const [showWidthUI, setShowWidthUI] = useState(true)
@@ -121,6 +123,24 @@ export default function DevApp() {
           Show Height UI
         </label>
         <label className="dev-app__config-item">
+          <span>Engine:</span>
+          <select
+            value={engine}
+            onChange={(e) => setEngine(e.target.value)}
+          >
+            <option value="canvaskit">CanvasKit (WASM)</option>
+            <option value="native">Native Canvas 2D</option>
+          </select>
+        </label>
+        <label className="dev-app__config-item">
+          <input
+            type="checkbox"
+            checked={antialiased}
+            onChange={(e) => setAntialiased(e.target.checked)}
+          />
+          Antialiased Font
+        </label>
+        <label className="dev-app__config-item">
           <span>DPI:</span>
           <select
             value={dpi ?? ''}
@@ -189,6 +209,8 @@ export default function DevApp() {
       </div>
 
       <CanvasEditor
+        engine={engine}
+        antialiased={antialiased}
         width={width}
         onWidthChange={setWidth}
         widths={CANVAS_WIDTHS}

@@ -1,6 +1,11 @@
 import { Component, createRef } from 'react'
 import { drawTextboxContent } from '../../utils/drawTextbox'
-import { ensureEditorFontsLoaded } from '../../utils/textboxFonts'
+import { ensureEditorFontsLoaded, isRasterTextboxFont, resolveTextboxFont } from '../../utils/textboxFonts'
+import { getBrowserCanvasKit } from '../../utils/browserCanvasKit.js'
+import { createWasmCanvas } from '../../utils/wasmCanvas.js'
+import { downsampleTo1Bit } from '../../render/binarize.js'
+import { drawServerTextbox } from '../../server/drawTextbox.js'
+import { drawWasmBarcode } from '../../render/renderWasmObjects.js'
 import { imageSrcForLoad, imageSrcForStore } from '../../utils/imageSrc'
 import { oneBitCacheKey, pngRenderedKey, render1BitCanvas } from '../../utils/image1bit'
 import {
@@ -58,6 +63,8 @@ export default class CanvasEditor extends Component {
   activeDrag = null
   /** Avoid re-entrant rendered writes while a patch is flushing. */
   renderedWritePending = new Set()
+  ckInstance = null
+  wasmCanvas = null
 
   constructor(props) {
     super(props)
@@ -196,6 +203,8 @@ export default class CanvasEditor extends Component {
     clipboard: null,
     components: {},
     labels: {},
+    engine: 'native',
+    antialiased: false,
   }
 
   getComponents() {
@@ -206,8 +215,24 @@ export default class CanvasEditor extends Component {
     return mergeLabels(DEFAULT_LABELS, this.props.labels)
   }
 
+  initCanvasKit() {
+    getBrowserCanvasKit()
+      .then(({ ck }) => {
+        this.ckInstance = ck
+        this.redraw()
+      })
+      .catch((err) => {
+        console.warn('[CanvasEditor] Failed to load CanvasKit, falling back to native engine', err)
+        this.redraw()
+      })
+  }
+
   componentDidMount() {
-    ensureEditorFontsLoaded().then(() => this.redraw())
+    if (this.props.engine === 'canvaskit') {
+      this.initCanvasKit()
+    } else {
+      ensureEditorFontsLoaded().then(() => this.redraw())
+    }
     window.addEventListener('mousemove', this.onWindowMouseMove)
     window.addEventListener('mouseup', this.onWindowMouseUp)
     window.addEventListener('touchend', this.onWindowMouseUp)
@@ -215,6 +240,14 @@ export default class CanvasEditor extends Component {
   }
 
   componentDidUpdate(prevProps, prevState) {
+    if (this.props.engine !== prevProps.engine) {
+      if (this.props.engine === 'canvaskit') {
+        this.initCanvasKit()
+      } else {
+        ensureEditorFontsLoaded().then(() => this.redraw())
+      }
+    }
+
     for (const obj of this.props.objects) {
       if (obj.type !== 'png') continue
       const prev = prevProps.objects.find((o) => o.id === obj.id)
@@ -306,6 +339,8 @@ export default class CanvasEditor extends Component {
       prevProps.maxheight !== this.props.maxheight ||
       prevProps.minHeight !== this.props.minHeight ||
       prevProps.minheight !== this.props.minheight ||
+      prevProps.engine !== this.props.engine ||
+      prevProps.antialiased !== this.props.antialiased ||
       prevProps.showWidthUI !== this.props.showWidthUI ||
       prevProps.showHeightUI !== this.props.showHeightUI ||
       prevProps.showWidth !== this.props.showWidth ||
@@ -332,6 +367,10 @@ export default class CanvasEditor extends Component {
     window.removeEventListener('mouseup', this.onWindowMouseUp)
     window.removeEventListener('touchend', this.onWindowMouseUp)
     window.removeEventListener('touchcancel', this.onWindowMouseUp)
+    if (this.wasmCanvas) {
+      this.wasmCanvas.dispose()
+      this.wasmCanvas = null
+    }
   }
 
   /** Only listen for non-passive touchmove while dragging (avoids blocking taps on Android). */
@@ -732,20 +771,98 @@ export default class CanvasEditor extends Component {
     const height = this.canvasHeight()
     const { objects } = this.props
     const { selectedId, cropModeId, cropInsets } = this.state
+    const selected = selectedId ? objects.find((o) => o.id === selectedId) : null
+
+    const useWasm = this.props.engine === 'canvaskit' && !!this.ckInstance
 
     ctx.clearRect(0, 0, width, height)
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, width, height)
 
-    for (const obj of objects) {
-      if (obj.id === selectedId) continue
-      this.drawObject(ctx, obj)
-    }
+    if (useWasm) {
+      if (this.props.antialiased) {
+        if (!this.wasmCanvas || this.wasmCanvas.width !== width || this.wasmCanvas.height !== height) {
+          this.wasmCanvas?.dispose()
+          this.wasmCanvas = createWasmCanvas(this.ckInstance, width, height)
+        }
+        const wasmCtx = this.wasmCanvas.getContext('2d')
+        wasmCtx.fillStyle = '#ffffff'
+        wasmCtx.fillRect(0, 0, width, height)
 
-    const selected = selectedId ? objects.find((o) => o.id === selectedId) : null
-    if (selected) {
-      // Keep drawing the full image while cropping; chrome dims the discarded edges.
-      this.drawObject(ctx, selected)
+        for (const obj of objects) {
+          if (obj.id === selectedId) continue
+          this.drawObjectWasm(wasmCtx, obj, this.ckInstance)
+        }
+
+        if (selected) {
+          this.drawObjectWasm(wasmCtx, selected, this.ckInstance)
+        }
+
+        const snap = wasmCtx.getImageData(0, 0, width, height)
+        ctx.putImageData(snap, 0, 0)
+      } else {
+        const scale = 2
+        const hiWidth = width * scale
+        const hiHeight = height * scale
+        if (!this.wasmCanvas || this.wasmCanvas.width !== hiWidth || this.wasmCanvas.height !== hiHeight) {
+          this.wasmCanvas?.dispose()
+          this.wasmCanvas = createWasmCanvas(this.ckInstance, hiWidth, hiHeight)
+        }
+        const wasmCtx = this.wasmCanvas.getContext('2d')
+        wasmCtx.setTransform(scale, 0, 0, scale, 0, 0)
+        wasmCtx.fillStyle = '#ffffff'
+        wasmCtx.fillRect(0, 0, width, height)
+
+        const rasterTextboxes = []
+        const scalableObjects = []
+        for (const obj of objects) {
+          if (obj.type === 'textbox' && isRasterTextboxFont(resolveTextboxFont(obj.font))) {
+            rasterTextboxes.push(obj)
+          } else {
+            scalableObjects.push(obj)
+          }
+        }
+
+        for (const obj of scalableObjects) {
+          if (obj.id === selectedId) continue
+          this.drawObjectWasm(wasmCtx, obj, this.ckInstance)
+        }
+
+        if (selected && !rasterTextboxes.includes(selected)) {
+          this.drawObjectWasm(wasmCtx, selected, this.ckInstance)
+        }
+
+        const hiRes = wasmCtx.getImageData(0, 0, hiWidth, hiHeight)
+        const oneBit = downsampleTo1Bit(hiRes, width, height, 128)
+        const snap = new ImageData(oneBit.data, width, height)
+        ctx.putImageData(snap, 0, 0)
+
+        for (const obj of rasterTextboxes) {
+          this.drawObject(ctx, obj)
+        }
+      }
+
+      for (const obj of objects) {
+        if (obj.type === 'textbox') {
+          withTextboxRotation(ctx, obj, () => {
+            ctx.strokeStyle = '#94a3b8'
+            ctx.lineWidth = 1
+            ctx.setLineDash([4, 4])
+            ctx.strokeRect(obj.x, obj.y, obj.w, obj.h)
+            ctx.setLineDash([])
+          })
+        }
+      }
+    } else {
+      for (const obj of objects) {
+        if (obj.id === selectedId) continue
+        this.drawObject(ctx, obj)
+      }
+
+      if (selected) {
+        // Keep drawing the full image while cropping; chrome dims the discarded edges.
+        this.drawObject(ctx, selected)
+      }
     }
 
     if (selected) {
@@ -842,6 +959,22 @@ export default class CanvasEditor extends Component {
         }
         ctx.restore()
       }
+    }
+  }
+
+  drawObjectWasm(wasmCtx, obj, ck) {
+    switch (obj.type) {
+      case 'textbox':
+        drawServerTextbox(wasmCtx, obj)
+        break
+      case 'barcode':
+        drawWasmBarcode(wasmCtx, obj, ck)
+        break
+      case 'png':
+        this.drawPng(wasmCtx, obj)
+        break
+      default:
+        break
     }
   }
 

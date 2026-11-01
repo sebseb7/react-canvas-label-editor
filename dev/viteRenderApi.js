@@ -1,3 +1,4 @@
+import fs from 'fs'
 import path from 'path'
 import { pathToFileURL } from 'url'
 
@@ -11,6 +12,19 @@ function readBody(req) {
 }
 
 function attachRenderApi(middlewares) {
+  middlewares.use((req, res, next) => {
+    if (req.url === '/canvaskit.wasm') {
+      const wasmPath = path.resolve(process.cwd(), 'node_modules/canvaskit-wasm/bin/canvaskit.wasm')
+      if (fs.existsSync(wasmPath)) {
+        res.statusCode = 200
+        res.setHeader('Content-Type', 'application/wasm')
+        fs.createReadStream(wasmPath).pipe(res)
+        return
+      }
+    }
+    next()
+  })
+
   middlewares.use(async (req, res, next) => {
     if (req.url !== '/api/render' || req.method !== 'POST') {
       next()
@@ -31,7 +45,6 @@ function attachRenderApi(middlewares) {
         res.end(JSON.stringify({ error: 'Invalid objects', details: validation.errors }))
         return
       }
-
 
       const start = performance.now()
       const png = await renderLabel({

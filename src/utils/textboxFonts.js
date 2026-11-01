@@ -17,6 +17,18 @@ export const TEXTBOX_FONT_LABELS = Object.fromEntries(
   TEXTBOX_FONT_OPTIONS.map((option) => [option.id, option.label]),
 )
 
+export const SERVER_FONT_FAMILIES = {
+  'outfit-light': 'LabelOutfitLight',
+  outfit: 'LabelOutfit',
+  'outfit-bold': 'LabelOutfitBold',
+  'outfit-black': 'LabelOutfitBlack',
+  'barlow-semi-condensed': 'LabelBarlowSemiCondensed',
+}
+
+export function serverFontFamily(fontId) {
+  return SERVER_FONT_FAMILIES[fontId] ?? SERVER_FONT_FAMILIES.outfit
+}
+
 export const TEXTBOX_FONT_FAMILIES = {
   'outfit-light': 'Outfit',
   outfit: 'Outfit',
